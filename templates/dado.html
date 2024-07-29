@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+{% block title %}Dado{% endblock %}
+
+{% block content %}
+<div class="text">Dado</div>
+{% if msg %}
+<h4>Mensagem: {{ msg }}</h4>
+{% endif %}
+{% if dado %}
+<div class="dado-container">
+    <div class="dado">
+    <div class="dado-row">
+        <button onclick="goBack()" class="svg-icon">
+            <img src="{{ url_for('static', filename='icon-back.svg') }}" alt="Download" width='25'>
+        </button>
+    </div>
+    <div class="dado-row">
+        <div class="dado-cell sized">Nome</div>
+        <div class="dado-cell">{{ dado.nome }}</div>
+    </div>
+    <div class="dado-row">
+        <div class="dado-cell sized">Disponível Cuiabá</div>
+        <div class="dado-cell">
+            Data: {{ '-' if not dado.date_cba else dado.date_cba }}
+        </div>
+    </div>
+    <div class="dado-row">
+        <div class="dado-cell sized">Download</div>
+        <div class="dado-cell">
+            Status: {{ dado.download_status if dado.download_status else '-' }}
+            <br>Início: {{ '-' if not dado.download_start_datetime else dado.download_start_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+            <br>Término: {{ '-' if not dado.download_end_datetime else dado.download_end_datetime.strftime("%d/%m/%Y  %H:%M:%S") }}
+            <br>Tamanho: {{ '-' if not dado.filesize else dado.filesize|size_to_human_view }}
+            <br>Tempo: {{ '-' if not dado.download_time else dado.download_time }}
+        </div>
+    </div>
+    <div class="dado-row">
+        <div class="dado-cell sized">MD5-CP</div>
+        <div class="dado-cell">
+            Status: {{ dado.md5_cp_status if dado.md5_cp_status else 'Não executado' }}
+            <br>Início: {{ '-' if not dado.md5_cp_end_datetime else dado.md5_cp_start_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+            <br>Término: {{ '-' if not dado.md5_cp_end_datetime else dado.md5_cp_end_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+            <br>Tempo: {{ '-' if not dado.md5_cp_time else dado.md5_cp_time }}
+        </div>
+    </div>
+    <div class="dado-row">
+        <div class="dado-cell sized">Válido</div>
+        <div class="dado-cell">
+            Status: {{ 'Sim' if dado.md5_validated else ('Não executado' if dado.md5_validated == None else 'Não') }}
+            <br>Data: {{ '-' if not dado.md5_validated_datetime else dado.md5_validated_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+        </div>
+    </div>
+    <div class="dado-row">
+        <div class="dado-cell sized">Armazenamento</div>
+        <div class="dado-cell">
+            Status: {{ dado.storing_status if dado.storing_status else 'Não executado' }}
+            <br>Início: {{ '-' if not dado.storing_start_datetime else dado.storing_start_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+            <br>Término: {{ '-' if not dado.storing_end_datetime else dado.storing_end_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+            <br>Tempo: {{ '-' if not dado.storing_time else dado.storing_time }}
+        </div>
+    </div>
+    </div>
+</div>
+{% if historico %}
+<span class="text">Histórico</span>
+{% for dado in historico %}
+<div class="dado-container">
+    <div class="dado-content">
+        <div class="dado">
+        <div class="dado-row">
+            <div class="dado-cell sized">Nome</div>
+            <div class="dado-cell">{{ dado.nome }}</div>
+        </div>
+        <div class="dado-row">
+            <div class="dado-cell sized">Tentativa</div>
+            <div class="dado-cell">
+                Número: {{ loop.index }}
+                <br>Usuário: {{ dado.retry_user_name }}
+                <br>Data: {{ '-' if not dado.retry_datetime else dado.retry_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+            </div>
+        </div>   
+        <div class="dado-row">
+            <div class="dado-cell sized">Download</div>
+            <div class="dado-cell">
+                Status: {{ dado.download_status if dado.download_status else '-' }}
+                <br>Início: {{ '-' if not dado.download_start_datetime else dado.download_start_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+                <br>Término: {{ '-' if not dado.download_end_datetime else dado.download_end_datetime.strftime("%d/%m/%Y  %H:%M:%S") }}
+                <br>Tempo: {{ '-' if not dado.download_time else dado.download_time}}
+            </div>
+        </div>
+        <div class="dado-row">
+            <div class="dado-cell sized">MD5-CP</div>
+            <div class="dado-cell">
+                Status: {{ dado.md5_cp_status if dado.md5_cp_status else 'Não executado' }}
+                <br>Início: {{ '-' if not dado.md5_cp_end_datetime else dado.md5_cp_start_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+                <br>Término: {{ '-' if not dado.md5_cp_end_datetime else dado.md5_cp_end_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+                <br>Tempo: {{ '-' if not dado.md5_cp_time else dado.md5_cp_time }}
+            </div>
+        </div>
+        <div class="dado-row">
+            <div class="dado-cell sized">Válido</div>
+            <div class="dado-cell">
+                Status: {{ 'Sim' if dado.md5_validated else ('Não executado' if dado.md5_validated == None else 'Não') }}
+                <br>Data: {{ '-' if not dado.md5_validated_datetime else dado.md5_validated_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+            </div>
+        </div>
+        <div class="dado-row">
+            <div class="dado-cell sized">Armazenamento</div>
+            <div class="dado-cell">
+                Status: {{ dado.storing_status if dado.storing_status else 'Não executado' }}
+                <br>Início: {{ '-' if not dado.storing_start_datetime else dado.storing_start_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+                <br>Término: {{ '-' if not dado.storing_end_datetime else dado.storing_end_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+                <br>Tempo: {{ '-' if not dado.storing_time else dado.storing_time }}
+            </div>
+        </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+{% endblock%}

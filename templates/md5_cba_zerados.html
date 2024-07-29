@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}MD5 CBA zerados{% endblock %}
+
+{% block status %}
+<div id="connection-status" class="connection-status">
+    Status
+    <svg id="connection-icon" class="connection-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <circle id="connection-circle" cx="12" cy="12" r="10" />
+    </svg>        
+</div>  
+{% endblock %}
+
+{% block content %}
+<div class="text">MD5s CBA zerados</div>
+{% if msg %}
+<h4>Mensagem: {{ msg }}</h4>
+{% endif %}
+
+<div class="dados">
+<div class="table">
+    <div class="row header">
+        <div class="cell name">Nome</div>
+        <div class="cell fixed">Registro</div>
+    </div>
+    {% for md5_zerado in list_md5 %}
+    <div class="row">
+        <div class="cell name">{{ md5_zerado.dado_nome }}</div>
+        <div class="cell fixed">{{ '-' if not md5_zerado.registro_datetime else md5_zerado.registro_datetime.strftime("%d/%m/%Y") }}</div>
+    </div>
+    {% endfor %}
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script> -->
+{% endblock %}

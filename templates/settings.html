@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Configurações{% endblock %}
+
+{% block content %}
+<div class="text">Configurações</div>
+{% if msg %}
+<h4>Mensagem: {{ msg }}</h4>
+{% endif %}
+
+<div class="settings-container">
+    <div class="settings-content">
+        <form action="">
+            <div class="theme">
+                <label class="switch">
+                    <input type="checkbox" id="theme" {{ 'checked' if session.dark_theme else ''}}>
+                    <span class="slider round"></span>
+                </label>    
+                <h4>Modo escuro</h4>
+            </div>
+            <br>
+            <br>
+            <div style="text-align: right;">
+                <button type="button" class="button" id="save-settings">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $('#save-settings').on("click", async function() {
+        var switchTheme = document.getElementById("theme");
+        var darkTheme = theme.checked;
+        const formData = new URLSearchParams();
+        formData.append('theme', darkTheme);
+        await fetch('/settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: formData,
+        });
+
+        const body = document.querySelector("body");
+        if(darkTheme){
+            body.classList.add("dark");
+        }else{
+            body.classList.remove("dark");
+        }
+    });
+</script>
+{% endblock%}

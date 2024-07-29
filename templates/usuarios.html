@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+{% block title %}Usuários{% endblock %}
+
+{% block content %}
+<div class="dados">
+    <div class="text">Usuários</div>
+    <div style="text-align: right;">
+        <button type="button" class="button" data-toggle="modal" data-target="#user-modal">Cadastrar Novo Usuário</button>
+    </div>
+    
+    {% if msg %}
+    <h4>Mensagem: {{ msg }}</h4>
+    {% endif %}
+    
+    <div class="table">
+        <div class="row header">
+            <div class="cell fixed">Nome</div>
+            <div class="cell fixed">E-mail</div>
+            <div class="cell fixed">Empresa</div>
+            <div class="cell fixed">Perfil</div>
+            <div class="cell fixed">Ativo</div>
+            <div class="cell fixed">Ações</div>
+        </div>
+        
+        {% for usuario in usuarios %}
+   
+        <div class="row">
+            <div class="cell fixed">{{ usuario.nome }}</div>
+            <div class="cell fixed">{{ usuario.email }}</div>
+            <div class="cell fixed">{{ usuario.empresa }}</div>
+            <div class="cell fixed">{{ usuario.perfil}}</div>
+            <div class="cell fixed">{{ 'Sim' if usuario.ativo else 'Não' }}</div>
+            <div class="cell fixed">
+                <button type="button" class="button button-small" data-toggle="modal" data-target="#user-modal" data-id="{{ usuario.id }}" data-nome="{{ usuario.nome }}" data-email="{{ usuario.email }}" data-empresa="{{ usuario.empresa }}" data-perfil="{{ usuario.perfil }}" data-ativo="{{ usuario.ativo }}">Editar</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="user-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="modal-close" data-dismiss="modal" aria-label="Fechar">
+                <span aria-hidden="true">&times;</span>
+            </button>
+            <span class="modal-title" id="userModelLabel">Cadastro</span>
+        </div>
+        <div class="modal-body">
+            <form action="{{ url_for('users')}}" method="post" autocomplete="off"> 
+            <input type="hidden" id="id-usuario" name="id-usuario">
+            <div class="form-group">
+                <label for="nome">Nome:</label><br>
+                <input type="text" class="form-control" id="nome" name="nome" placeholder="Digite o nome" required><br>
+            </div>
+            <div class="form-group">
+                <label for="email">E-mail:</label><br>
+                <input type="text" class="form-control" id="email" name="email" placeholder="Digite o e-mail" required><br>
+            </div>
+            <div class="form-group">
+                <label for="empresa">Empresa:</label><br>
+                <input type="text" class="form-control" id="empresa" name="empresa" placeholder="Digite a empresa" required><br>
+            </div>
+            <div class="form-check">
+                <label class="form-check-label" for="perfil">Perfil</label><br>
+                <select class="form-control" id="perfil" name="perfil">
+                    <option value="visitante">Visitante</option>
+                    <option value="operador">Operador</option>
+                    <option value="administrador">Administrador</option>
+                </select>
+            </div>
+            <br>
+            <div class="form-check" id="ativo-group">
+                <input type="checkbox" class="form-check-input" id="ativo" name="ativo">
+                <label class="form-check-label" for="ativo">Ativo</label><br>
+            </div>
+            <br>
+            <div class="text-right">
+                <button type="button" class="button button-secondary" data-dismiss="modal">Fechar</button>
+                <button type="submit" class="button" id="btn-submit">Salvar</button>
+            </div>
+            </form>
+        </div>    
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+    $('#user-modal').on('show.bs.modal', function (event) {
+        var button = $(event.relatedTarget); // Botão que acionou o modal
+        var usuario = button.data('id'); // Extrai a informação dos atributos de dados
+        // Se o modal foi aberto pelo botão "Editar", exiba o campo Ativo, caso contrário, oculte-o
+        if (usuario) {
+            var nome = button.data('nome');
+            var email = button.data('email');
+            var empresa = button.data('empresa');
+            var perfil = button.data('perfil');
+            var ativo = button.data('ativo');
+            var usuario = button.data('id');
+            // EDITAR
+            $("#userModelLabel").text("Editar");
+            $("#ativo-group").show();
+            $("#id-usuario").val(usuario)
+            $("#nome").val(nome)
+            $("#email").val(email)
+            $("#empresa").val(empresa)
+            $("#perfil").val(perfil)
+            $("#ativo").prop('checked',ativo)
+        } else {
+            // CADASTRAR
+            $("#userModelLabel").text("Cadastrar");
+            $("#ativo-group").hide();
+            $("#senha-group").show();
+            $("#id-usuario").val('')
+            $("#nome").val('')
+            $("#email").val('')
+            $("#empresa").val('')
+            $("#perfil").val('visitante')
+            $("#ativo").prop('checked',false)
+        }
+    });
+</script>
+{% endblock%}

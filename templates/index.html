@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+
+{% block title %}Transferências{% endblock %}
+
+{% block content %}
+{% if msg %}
+<h4>Mensagem: {{ msg }}</h4>
+{% endif %}
+<div class="info-container">    
+    <div class="info-transfer-list">
+        <div class="dados">
+            <div class="text">Fila</div>
+            {% if not transfer_list %}
+            Não há dados na fila
+            {% endif %}
+            {% for file in transfer_list %}
+            <span>{{ file }}</span><br>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="info-transfer-volume">
+        <div class="dados">
+            <div class="text">Volume diário</div>
+            {{ '-' if daily_volume == None else daily_volume|size_to_human_view }}
+        </div>
+    </div>
+</div>
+
+<div class="dados-container">
+    <div class="dados-list">
+        <div class="dados" id="list-data">
+            <div class="header-container">
+                <div class="text">Transferências</div>
+                <form id="items-form" action="{{ url_for('index') }}" method="get" style="display: inline;">
+                    <label for="items-per-page">Itens:</label>
+                    <select name="items" id="items_per_page" onchange="this.form.submit()">
+                        <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                        <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+                        <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                        <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                    </select>
+                </form>
+            </div>
+            <form action="{{ url_for('index')}}" method="post" autocomplete="off"> 
+                <div class="dados" id="search" style="display: none;">
+                    <div class="search-container">
+                        <button type="button" id="clear-search" class="clear-button">&times;</button>
+                        <input type="text" id="search-data" name="search-data" placeholder="  Pesquisa" class="form-control search-data" aria-describedby="basic-addon1">
+                        <button type="submit" id="search-submit" class="button button-small"> Buscar</button>
+                    </div>
+                </div>
+            </form>
+            <div class="table">
+                <div class="row header">
+                    <div class="cell name">Nome</div>
+                    <div class="cell fixed">Download</div>
+                    <div class="cell fixed">Data</div>
+                    <div class="cell fixed">Tempo</div>
+                    <div class="cell fixed">MD5-CP</div>
+                    <div class="cell fixed">Válido</div>
+                    <div class="cell fixed">Armazenamento</div>
+                    <div class="cell fixed">Data</div>
+                    <div class="cell fixed">Tempo</div>
+                </div>
+            
+                {% for dado in dados %}
+                <div class="row click dado-row" id="{{ dado.id }}">
+                    <div class="cell name">{{ dado.nome }}</div>
+                    <div class="cell fixed">
+                        <div class="status {{ dado.download_status|class_status }}">
+                            {{ dado.download_status if dado.download_status else '-' }}
+                        </div>
+                    </div>
+                    <div class="cell fixed">{{ '-' if not dado.download_end_datetime else dado.download_end_datetime.strftime("%d/%m/%Y") }}</div>
+                    <div class="cell fixed">{{ '-' if not dado.download_time else dado.download_time }}</div>
+                    <div class="cell fixed">
+                        <div class="status {{ dado.md5_cp_status|class_status }}">
+                            {{ dado.md5_cp_status if dado.md5_cp_status else 'Aguardando' }}
+                        </div>
+                    </div>
+                    <div class="cell fixed">
+                        <div class="status {{ dado.md5_validated|class_status }}">
+                            {{ 'Sim' if dado.md5_validated else ('Aguardando' if dado.md5_validated == None else 'Não') }}
+                        </div>
+                    </div>
+                    <div class="cell fixed">
+                        <div class="status {{ dado.storing_status|class_status }}">
+                            {{ dado.storing_status if dado.storing_status else 'Aguardando' }}
+                        </div>
+                    </div>
+                    <div class="cell fixed">{{ '-' if not dado.storing_end_datetime else dado.storing_end_datetime.strftime("%d/%m/%Y") }}</div>
+                    <div class="cell fixed">{{ '-' if not dado.storing_time else dado.storing_time }}</div>
+                </div>
+                {% endfor %}
+
+		<div class="pagination">
+                    {% if page > 1 %}
+                        <a href="{{ url_for('index', pag=page-1, search=search_data, items=per_page) }}">Anterior</a>
+                    {% endif %}
+
+                    Página {{ page }} de {{ total_pages.total_pages if total_pages else 1 }}
+
+                    {% if page < total_pages.total_pages %}
+                        <a href="{{ url_for('index', pag=page+1, search=search_data, items=per_page) }}">Próxima</a>
+                    {% endif %}
+                </div>
+                <div>
+                    Total: {{ total_pages.total_items }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<br>
+<br>
+{% endblock %}
+
+{% block scripts%}
+<script>
+    // open data on click
+    var rows = document.querySelectorAll('.click');
+    rows.forEach(function(div) {
+        div.addEventListener('click', function() {
+            var id = this.id;
+            window.location.href = 'dado/' + id;
+        });
+    });
+
+    // reload page
+    reloadPage();
+</script>
+{% endblock %}

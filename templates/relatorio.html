@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+
+{% block title %}Gerência{% endblock %}
+
+{% block content %}
+{% if msg %}
+<h4>Mensagem: {{ msg }}</h4>
+{% endif %}
+<div class="info-container">    
+    <div class="info-transfer-list">
+        <div class="dados">
+            <div class="text">Busca</div>
+            <form action="{{ url_for('relatorio')}}" method="post" autocomplete="off"> 
+                <span>
+                    Ínicio:             
+                    <input type="date" name="date-start" class="textbox form-group" id="date-start" value="{{ date_start }}" required>
+                    Fim: 
+                    <input type="date" name="date-end" class="textbox form-group" id="date-end" value="{{ date_end }}" required>
+                    <button type="submit" class="button button-small">Atualizar</button>
+                </span>
+            </form>
+        </div>
+    </div>
+    <div class="info-transfer-volume">
+        <div class="dados">
+            <div class="text">Volume do período:</div>
+            {{ '-' if daily_volume == None else daily_volume|size_to_human_view }}
+        </div>
+    </div>
+</div>
+
+<div class="dados-container">
+    <div class="dados-list">
+        <div class="dados" id="list-data">
+            <div class="text">
+                Transferências
+                {% if grafico_volume %}
+                <a class="export openModal" id="openModal" data-toggle="modal" data-target="#modal">
+                    <img src="{{ url_for('static', filename='icon-graph.svg') }}" alt="Gráfico" width='25' class="svg-icon">
+                </a>
+                <a class="export" id="buttonDownload">
+                    <i class="bx bxs-cloud-download icon"></i>
+                </a>
+                {% endif %}
+            </div>
+
+            <div class="table">
+                <div class="row header">
+                    <div class="cell name">Nome</div>
+                    <div class="cell fixed">Download</div>
+                    <div class="cell fixed">Data</div>
+                    <div class="cell fixed">Tempo</div>
+                    <div class="cell fixed">MD5-CP</div>
+                    <div class="cell fixed">Válido</div>
+                    <div class="cell fixed">Armazenamento</div>
+                    <div class="cell fixed">Data</div>
+                    <div class="cell fixed">Tempo</div>
+                </div>
+            
+                {% for dado in dados %}
+                <div class="row click dado-row" id="{{ dado.id }}">
+                    <div class="cell name">{{ dado.nome }}</div>
+                    <div class="cell fixed">
+                        <div class="status {{ dado.download_status|class_status }}">
+                            {{ dado.download_status if dado.download_status else '-' }}
+                        </div>
+                    </div>
+                    <div class="cell fixed">{{ '-' if not dado.download_end_datetime else dado.download_end_datetime.strftime("%d/%m/%Y") }}</div>
+                    <div class="cell fixed">{{ dado.download_time }}</div>
+                    <div class="cell fixed">
+                        <div class="status {{ dado.md5_cp_status|class_status }}">
+                            {{ dado.md5_cp_status if dado.md5_cp_status else 'Aguardando' }}
+                        </div>
+                    </div>
+                    <div class="cell fixed">
+                        <div class="status {{ dado.md5_validated|class_status }}">
+                            {{ 'Sim' if dado.md5_validated else ('Aguardando' if dado.md5_validated == None else 'Não') }}
+                        </div>
+                    </div>
+                    <div class="cell fixed">
+                        <div class="status {{ dado.storing_status|class_status }}">
+                            {{ dado.storing_status if dado.storing_status else 'Aguardando' }}
+                        </div>
+                    </div>
+                    <div class="cell fixed">{{ '-' if not dado.storing_end_datetime else dado.storing_end_datetime.strftime("%d/%m/%Y") }}</div>
+                    <div class="cell fixed">{{ '-' if not dado.storing_time else dado.storing_time }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+<br>
+<br>
+
+<!-- Modal para exibir o gráfico -->
+
+<div class="modal" id="modal" tabindex="-1" role="dialog" aria-labelledby="modalLabel" aria-hidden="true">
+    <div class="modal-content-graph">
+        <div class="modal-header">
+            <button type="button" class="modal-close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="tab-container">
+                <div class="tab-menu">
+                    <button class="tab-button active" onclick="openTab(event, 'tab1')">Volume</button>
+                    <button class="tab-button" onclick="openTab(event, 'tab2')">Quantidade</button>
+                    <button class="tab-button" onclick="openTab(event, 'tab4')">Tempo</button>
+                    <button class="tab-button" onclick="openTab(event, 'tab3')">Satélites</button>
+                </div>
+                <div class="tab-content" id="tab1">
+                    <div id="grafico-modal-1"></div>
+                </div>
+                <div class="tab-content" id="tab2">
+                    <div id="grafico-modal-2"></div>
+                </div>
+                <div class="tab-content" id="tab3">
+                    <div id="grafico-modal-3"></div>
+                </div>
+                <div class="tab-content" id="tab4">
+                    <div id="grafico-modal-4"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+<script>
+    $(document).ready(function() {
+        $('.click').on('click', function() {
+            var id = $(this).attr('id');
+            window.location.href = 'dado/' + id;
+        });
+
+        var modalElement = document.getElementById('modal');
+        var modal = new bootstrap.Modal(modalElement, {
+            keyboard: false
+        });
+
+        $('.openModal').on('click', function() {            
+            document.getElementsByClassName("tab-button")[0].click();
+            loadGraph(1);
+            loadGraph(2);
+            loadGraph(3);            
+            loadGraph(4);            
+        });
+
+        $('#buttonDownload').on('click', function() {            
+            window.open('relatorio?download=1&start={{date_start}}&end={{date_end}}', '_blank');
+        });
+        
+    });
+
+    function loadGraph(graphNumber) {                
+        var elementId = 'grafico-modal-' + graphNumber;   
+
+        if (graphNumber === 1) {
+            var graficoData = {{ grafico_volume|safe }};
+            Plotly.newPlot(elementId, graficoData.data, graficoData.layout);
+        } else if (graphNumber === 2) {
+            var graficoData = {{ grafico_quantidade|safe }};
+            Plotly.newPlot(elementId, graficoData.data, graficoData.layout);
+        } else if (graphNumber === 3) {
+            var graficoData = {{ grafico_satellite|safe }};
+            Plotly.newPlot(elementId, graficoData.data, graficoData.layout);
+        } else if (graphNumber === 4) {
+            var graficoData = {{ grafico_tempo|safe }};
+            Plotly.newPlot(elementId, graficoData.data, graficoData.layout);
+        }
+    }
+
+    function openTab(evt, tabName) {
+        var i, tabcontent, tabbuttons;
+
+        // Esconde todo o conteúdo das abas
+        tabcontent = document.getElementsByClassName("tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+            tabcontent[i].classList.remove("active");
+        }
+
+        // Remove a classe "active" de todos os botões
+        tabbuttons = document.getElementsByClassName("tab-button");
+        for (i = 0; i < tabbuttons.length; i++) {
+            tabbuttons[i].classList.remove("active");
+        }
+
+        // Mostra a aba atual e adiciona a classe "active" ao botão que a abriu
+        document.getElementById(tabName).style.display = "block";
+        document.getElementById(tabName).classList.add("active");
+        evt.currentTarget.classList.add("active");
+    }
+</script>
+{% endblock %}
