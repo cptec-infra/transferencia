@@ -113,7 +113,7 @@ class DadoRepository:
     def find_data(self, name):
         try:
             cursor = self.db.cursor()
-            cursor.execute('select id_dado from dado where nome=%s',(name))
+            cursor.execute('select id_dado from dado where nome=%s',(name,))
             result = cursor.fetchone()
             self.db.commit()
             cursor.close()
