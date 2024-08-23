@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Dado{% endblock %}
+
+{% block content %}
+<div class="text">Dado</div>
+{% if msg %}
+<h4>Mensagem: {{ msg }}</h4>
+{% endif %}
+{% if dartcom %}
+<div class="dado-container">
+    <div class="dado">
+    <div class="dado-row">
+        <button onclick="goBack()" class="svg-icon">
+            <img src="{{ url_for('static', filename='icon-back.svg') }}" alt="Download" width='25'>
+        </button>
+    </div>
+    <div class="dado-row">
+        <div class="dado-cell sized">Nome</div>
+        <div class="dado-cell">{{ dartcom.nome }}</div>
+    </div>
+    <div class="dado-row">
+        <div class="dado-cell sized">Data de modificação</div>
+        <div class="dado-cell">
+            {{ '-' if not dartcom.modified_datetime else dartcom.modified_datetime }}
+        </div>
+    </div>
+    <div class="dado-row">
+        <div class="dado-cell sized">Compactação</div>
+        <div class="dado-cell">
+            Status: {{ dartcom.compressed_status if dartcom.compressed_status else 'Não executado' }}
+            <br>Início: {{ '-' if not dartcom.compressed_end_datetime else dartcom.compressed_start_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+            <br>Término: {{ '-' if not dartcom.compressed_end_datetime else dartcom.compressed_end_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+            <br>Tempo: {{ '-' if not dartcom.compressed_time else dartcom.compressed_time }}
+        </div>
+    </div>
+    <div class="dado-row">
+        <div class="dado-cell sized">Armazenamento</div>
+        <div class="dado-cell">
+            Status: {{ dartcom.storing_status if dartcom.storing_status else 'Não executado' }}
+            <br>Início: {{ '-' if not dartcom.storing_start_datetime else dartcom.storing_start_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+            <br>Término: {{ '-' if not dartcom.storing_end_datetime else dartcom.storing_end_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+            <br>Tempo: {{ '-' if not dartcom.storing_time else dartcom.storing_time }}
+        </div>
+    </div>
+    </div>
+</div>
+{% if historico %}
+<span class="text">Histórico</span>
+{% for dado in historico %}
+<div class="dado-container">
+    <div class="dado-content">
+        <div class="dado">
+        <div class="dado-row">
+            <div class="dado-cell sized">Nome</div>
+            <div class="dado-cell">{{ dado.nome }}</div>
+        </div>
+        <div class="dado-row">
+            <div class="dado-cell sized">Tentativa</div>
+            <div class="dado-cell">
+                Número: {{ loop.index }}
+                <br>Usuário: {{ dado.retry_user_name }}
+                <br>Data: {{ '-' if not dado.retry_datetime else dado.retry_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+            </div>
+        </div>   
+        <div class="dado-row">
+            <div class="dado-cell sized">Compactação</div>
+            <div class="dado-cell">
+                Status: {{ dartcom.compressed_status if dartcom.compressed_status else 'Não executado' }}
+                <br>Início: {{ '-' if not dartcom.compressed_end_datetime else dartcom.compressed_start_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+                <br>Término: {{ '-' if not dartcom.compressed_end_datetime else dartcom.compressed_end_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+                <br>Tempo: {{ '-' if not dartcom.compressed_time else dartcom.compressed_time }}
+            </div>
+        </div>
+        <div class="dado-row">
+            <div class="dado-cell sized">Armazenamento</div>
+            <div class="dado-cell">
+                Status: {{ dartcom.storing_status if dartcom.storing_status else 'Não executado' }}
+                <br>Início: {{ '-' if not dartcom.storing_start_datetime else dartcom.storing_start_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+                <br>Término: {{ '-' if not dartcom.storing_end_datetime else dartcom.storing_end_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
+                <br>Tempo: {{ '-' if not dartcom.storing_time else dartcom.storing_time }}
+            </div>
+        </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+{% endblock%}

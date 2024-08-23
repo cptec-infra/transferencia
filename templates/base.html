@@ -5,88 +5,128 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}{% endblock %}</title>
   <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
   <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/logo-coids.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body{{ ' class=dark' if session.dark_theme else ''}}>
+<body class="{{ ' dark' if session.dark_theme else '' }}">
 
 <nav class="sidebar close">
-  <header>
-      <div class="image-text">
-          <span class="image">
-              <img src="{{ url_for('static', filename='images/logo.png') }}" alt="logo">
-          </span>
+    <header>
+        <div class="image-text">
+            <span class="image">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="logo">
+            </span>
 
-          <div class="text header-text">
-              <span class="title">Transferências</span>
-              <span class="user">Olá, {{ session['nome'] }}!</span>
-          </div>
-      </div>
-      <i class="bx bx-chevron-right toggle"></i>
-  </header>
+            <div class="text header-text">
+                <span class="title">Transferências</span>
+                <br>
+                <span class="user">
+                    Olá,
+                    <br> 
+                    {{ session['nome'] }}!
+                </span>
+            </div>
+        </div>
+        <i class="bx bx-chevron-right toggle"></i>
+    </header>
 
-  <div class="menu-bar">
-      <div class="menu">
-          <li class="nav-link">
-              <a href="{{ url_for('index')}}">
-                  <i class="bx bx-home-alt icon"></i>
-                  <span class="text nav-text">Início</span>
-              </a>
-          </li>
+    <div class="menu-bar">
+        <div class="menu">
+            <div class="submenu">
+                <li class="nav-link" id="sensing">
+                    <a href="javascript:void(0);">
+                        <i class="fas fa-broadcast-tower icon"></i>
+                        <span class="text nav-text">Sensoriamento</span>
+                    </a>
+                </li>
 
-          <li class="nav-link">
-              <a href="{{ url_for('errors')}}">
-                  <i class="bx bx-error icon"></i>
-                  <span class="text nav-text">Erros</span>
-              </a>
-          </li>
+                <div class="sensing">
+                    <li class="nav-link">
+                        <a href="{{ url_for('index')}}">
+                            <i class="bx bx-home-alt icon"></i>
+                            <span class="text nav-text">Dados</span>
+                        </a>
+                    </li>
+                    <li class="nav-link">
+                        <a href="{{ url_for('errors')}}">
+                            <i class="bx bx-error icon"></i>
+                            <span class="text nav-text">Erros</span>
+                        </a>
+                    </li>
 
-          <li class="nav-link">
-              <a href="{{ url_for('md5_cba_zerados')}}">
-                  <i class="bx bx-file-blank icon"></i>
-                  <span class="text nav-text">MD5s zerados</span>
-              </a>
-          </li>
+                    <li class="nav-link">
+                        <a href="{{ url_for('md5_cba_zerados')}}">
+                            <i class="bx bx-file-blank icon"></i>
+                            <span class="text nav-text">MD5s zerados</span>
+                        </a>
+                    </li>
+                </div>
+            </div>
 
-          <li class="nav-link">
-              <a href="/" id="search-button">
-                  <i class="bx bx-search icon"></i>
-                  <span class="text nav-text">Busca</span>
-              </a>
-          </li>
-      </div>
+            <div class="submenu">
+                <li class="nav-link" id="meteorology">
+                    <a href="javascript:void(0);">
+                        <i class="fas fa-satellite-dish icon"></i>
+                        <span class="text nav-text">Meteorológicos</span>
+                    </a>
+                </li>
+                <div class="meteorology">  
+                    <li class="nav-link">
+                        <a href="{{ url_for('dartcom')}}">
+                            <i class="bx bx-home-alt icon"></i>
+                            <span class="text nav-text">Dados</span>
+                        </a>
+                    </li>
+                    <li class="nav-link">
+                        <a href="{{ url_for('dartcom_erro')}}">
+                            <i class="bx bx-error icon"></i>
+                            <span class="text nav-text">Erros</span>
+                        </a>
+                    </li>
+                </div>
+            </div>
+
+            <!-- <li class="nav-link">
+                <a href="/" id="search-button">
+                    <i class="bx bx-search icon"></i>
+                    <span class="text nav-text">Busca</span>
+                </a>
+            </li> -->
+        </div>
       
-      <div class="bottom-context">
-          {% if session['perfil'] == 'administrador' %}
-          <li class="">
-            <a href="{{ url_for('relatorio') }}">
-                <i class='bx bxs-report icon'></i>
-                <span class="text nav-text">Relatório</span>
-            </a>
-        </li>
-          <li class="">
-              <a href="{{ url_for('users') }}">
-                  <i class='bx bx-group icon'></i>
-                  <span class="text nav-text">Usuários</span>
-              </a>
-          </li>
-          {% endif %}
+        <div class="bottom-context">
+            {% if session['perfil'] == 'administrador' %}
+            <li class="">
+                <a href="{{ url_for('relatorio') }}">
+                    <i class='bx bxs-report icon'></i>
+                    <span class="text nav-text">Relatório</span>
+                </a>
+            </li>
+            <li class="">
+                <a href="{{ url_for('users') }}">
+                    <i class='bx bx-group icon'></i>
+                    <span class="text nav-text">Usuários</span>
+                </a>
+            </li>
+            {% endif %}
 
-          <li class="">
-              <a href="{{ url_for('settings') }}">
-                  <i class='bx bx-cog icon'></i>
-                  <span class="text nav-text">Configurações</span>
-              </a>
-          </li>
+            <li class="">
+                <a href="{{ url_for('settings') }}">
+                    <i class='bx bx-cog icon'></i>
+                    <span class="text nav-text">Configurações</span>
+                </a>
+            </li>
 
-          <li class="">
-              <a href="{{ url_for('logout') }}">
-                  <i class="bx bx-log-out icon"></i>
-                  <span class="text nav-text">Sair</span>
-              </a>
-          </li>
-      </div>
-  </div>
+            <li class="">
+                <a href="{{ url_for('logout') }}">
+                    <i class="bx bx-log-out icon"></i>
+                    <span class="text nav-text">Sair</span>
+                </a>
+            </li>
+        </div>
+    </div>
 </nav>
 
 <section class="home">
@@ -105,6 +145,7 @@
 
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
 <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+
 {% block scripts %}
 {% endblock %}
 </body>

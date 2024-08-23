@@ -8,7 +8,7 @@ def class_status(status):
     elif status == 1:
         status = 'sim'
     else:
-        status = unidecode(status).lower()
+        status = unidecode(status.replace(".","")).lower()
     return status
 
 def size_to_human_view(size):

@@ -1,4 +1,5 @@
 import os
+import glob
 import re
 import requests
 import hashlib
@@ -10,19 +11,21 @@ import asyncio
 import random
 import string
 import math
+from typing import List
+from string import Template
 from io import BytesIO
 from flask import send_file
 from bs4 import BeautifulSoup
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime
-from models import DadoModel
+from datetime import datetime, timedelta
+from models import DadoModel, DartcomModel, DartcomSateliteModel
 from filters.filters import size_to_human_view
 from repositories.dado_repository import DadoRepository
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import cm
 from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from itsdangerous import URLSafeTimedSerializer
 
@@ -37,6 +40,17 @@ fdt_destiny_all = config.get('FDT', 'fdt_destiny_all')
 fdt_origin_data = config.get('FDT', 'fdt_origin_data')
 fdt_origin_md5 = config.get('FDT', 'fdt_origin_md5')
 fdt_destiny_md5 = config.get('FDT', 'fdt_destiny_md5')
+# Dartcom
+fdt_port_dartcom = config.get('FDT', 'fdt_port_dartcom')
+fdt_destiny_dartcom = config.get('FDT', 'fdt_destiny_dartcom')
+fdt_origin_dartcom = config.get('FDT', 'fdt_origin_dartcom')
+dartcom_time_min = config.getint('DARTCOM', 'dartcom_time_min')
+
+# SCP
+scp_destiny_dartcom = config.get('SCP', 'scp_destiny_dartcom')
+scp_origin_dartcom = config.get('SCP', 'scp_origin_dartcom')
+scp_user = config.get('SCP','scp_user')
+scp_ip = config.get('SCP','scp_ip')
 
 # Declaracao de variaveis para armazenar
 storage_path = config.get('STORAGE','storage_path')
@@ -56,14 +70,19 @@ id_admin = config.get('APP', 'id_admin')
 status_error = 'Erro'
 status_running = 'Executando'
 status_completed = 'Concluído'
+status_na = 'N.A.'
 
 # Carrega a chave para criar o token de senha
 key_reset_password = config.get('PASSWORD', 'key_reset_password')
 
 transfer_list = []
+dartcom_list = []
 
 def get_transfer_list():
     return transfer_list
+
+def get_dartcom_list():
+    return dartcom_list
 
 # procura novos arquivos
 def background_process():
@@ -102,9 +121,477 @@ def background_process():
     for data in new_files_list:
         transfer_file(data)
 
+def background_process_dartcom():
+    # atualiza os md5s
+    service_running_cba = search_files_dartcom_cba()
+    service_running_cp = search_files_dartcom_cp()
+    if service_running_cba or service_running_cp:
+        return
+
+    global dartcom_list
+    dartcom_list = []
+
+    # lista de dados para retentar
+    dartcom_retries = search_dartcom_retries()
+    # lista de diretorios dartcom na ampare
+    result_dartcom, dartcom_error = list_search_dartcom(fdt_destiny_dartcom)
+    if dartcom_error:
+        send_email('Falha ao buscar dados da antenas', f'Favor verificar o ocorrido.\n\n{dartcom_error}', True)
+        return
+    # lista de dados que não foram registrados ainda (novos)
+    new_files_dartcom = get_new_files_dartcom(result_dartcom)
+
+    # add os nomes dos dados (retry) na lista de transferência
+    for r in dartcom_retries:
+        dartcom_list.append(r.nome)
+
+    # add os nomes dos dados (novos) na lista de transferência
+    for f in new_files_dartcom:
+        dartcom_list.append(f)
+
+    # realiza os retries
+    if dartcom_retries:
+        for retry in dartcom_retries:
+            print(f'Retentando o arquivo dartcom {retry.nome}')
+            retry_file_dartcom(retry)
+
+    # realiza os processos para os novos arquivos            
+    for data in new_files_dartcom:
+        dartcom_file(data)
+
+# Fluxo:
+# Compactar
+# Armazenar dado
+def dartcom_file(dartcom):
+    data, missao, files_path, satelite, date_modified, date_dir = dartcom
+
+    dado_repository = DadoRepository()
+
+    dartcom = DartcomModel()
+    dartcom.set_nome(data)
+    dartcom.set_modified_datetime(date_modified)
+    dartcom.set_compressed_status(status_running)
+    dartcom.set_compressed_start_datetime(get_datetime_str())
+    dartcom.set_date_path(date_dir)
+    dartcom.set_missao(missao)
+
+    id_dartcom, error_db = dado_repository.insert_dartcom(dartcom)
+    if error_db:
+        send_email('Falha no registro da tabela dartcom', f'Favor verificar o ocorrido.\n\n{error_db}', True)
+        return
+    
+    dartcom_list.remove(dartcom)    
+    dartcom.set_id(id_dartcom)
+
+    # name
+    filename = data
+
+    # compactar
+    path_transfer = ''
+    if satelite.is_compressed:
+        filename += ".tar.gz"
+        # compacta os arquivos
+        epsl0_path = get_dartcom_epsl0_path(satelite.epsl0_template, data)       
+        file_compress, compress_status, compress_end_datetime, filesize, compress_error = dartcom_compress(data, files_path, satelite.is_epsl0, epsl0_path)
+
+        path_transfer = file_compress
+        dartcom.set_compressed_status(compress_status)
+        dartcom.set_compressed_end_datetime(compress_end_datetime)
+        dartcom.set_filesize(filesize)
+
+        error_db = dado_repository.update_dartcom_compress(dartcom)
+        if error_db:
+            send_email('Falha ao atualizar dados na compactação', f'Favor verificar o ocorrido.\n\n{error_db}', True)
+            return
+
+        if compress_status == status_error:
+            # Erro ao compactar
+            # Envia e-mail comunicando o erro
+            send_email(f'Falha ao compactar {data}', f'Erro ao compactar o dado {data}.\n\nFavor realizar o processo novamente!\n\nDescrição do erro: \n\n{compress_error}\n\nAtenciosamente, \n\nCOIDS')
+            return
+    else:
+        dartcom.set_compressed_status(status_na)
+        dartcom.set_compressed_start_datetime(None)
+
+        # localizar o arquivo e pegar o tamanho
+        path_transfer, filesize, error_vcdu = dartcom_vcdu(files_path)
+        dartcom.set_filesize(filesize)
+
+        error_db = dado_repository.update_dartcom_vcdu(dartcom)
+        if error_db:
+            send_email('Falha ao atualizar dado vcdu', f'Favor verificar o ocorrido.\n\n{error_db}', True)
+            return
+        
+    # Atualiza o registro com o início do armazenamento
+    storing_start_datetime = get_datetime_str()
+    storing_status = status_running
+    dartcom.set_storing_start_datetime(storing_start_datetime)
+    if error_vcdu:
+        dartcom.set_storing_status(status_error)
+    else:
+        dartcom.set_storing_status(storing_status)
+
+    error_db = dado_repository.update_dartcom_storing_running(dartcom=dartcom)
+    if error_db:
+        send_email('Falha ao atualizar dados do armazenamento dartcom', f'Favor verificar o ocorrido.\n\n{error_db}', True)
+        return
+    
+    # ARAMAZENA O DADO
+    if storing_status != status_error:
+        storing_status, storing_end_datetime, storing_error = copy_dartcom(path_transfer, satelite, missao, date_dir, filename)
+    if storing_status == status_error:
+        # Erro ao armazenar o dado
+        # Envia e-mail comunicando o erro
+        send_email(f'Falha ao armazenar o dartcom {data}', f'Erro ao armazenar o dartcom {data} na COIDS.\n\nFavor realizar o processo novamente!\n\nDescrição do erro: \n\n{storing_error}\n\nAtenciosamente, \n\nCOIDS')
+    
+    dartcom.set_storing_status(storing_status)
+    dartcom.set_storing_end_datetime(storing_end_datetime)
+
+    error_db = dado_repository.update_dartcom_storing_completed(dartcom=dartcom)
+    if error_db:
+        send_email('Falha ao atualizar dados do término do armazenamento dartcom', f'Favor verificar o ocorrido.\n\n{error_db}', True)
+
+def retry_file_dartcom(dartcom: DartcomModel):
+    dado_repository = DadoRepository()
+    dado_repository.insert_dartcom_historico(dartcom.id)
+
+    files_path = f'{dartcom.dartcom_satelite.satelite_path}/{dartcom.date_path}'
+
+    error = dartcom.error
+
+    # redefine os valores para realizar a retentativa - inicio
+    if error == 'compactar':
+        dartcom.set_compressed_status(None)
+        dartcom.set_compressed_start_datetime(None)
+        dartcom.set_compressed_end_datetime(None)
+        dartcom.set_filesize(None)
+        dartcom.set_storing_status(None)
+        dartcom.set_storing_start_datetime(None)
+        dartcom.set_storing_end_datetime(None)
+    elif error == 'armazenamento':
+        dartcom.set_storing_status(None)
+        dartcom.set_storing_start_datetime(None)
+        dartcom.set_storing_end_datetime(None)
+
+    dartcom.set_retry_user(None)
+    dartcom.set_retry_datetime(None)
+    # redefine os valores para realizar a retentativa - fim
+    dado_repository.update_dartcom_reset(dartcom)
+
+    data = dartcom.nome    
+    dartcom_list.remove(data)
+
+    # name
+    filename = data
+
+    # compactar
+    path_transfer = ''
+    if dartcom.dartcom_satelite.is_compressed:
+        filename += ".tar.gz"
+        # compacta os arquivos
+        epsl0_path = get_dartcom_epsl0_path(dartcom.dartcom_satelite.epsl0_template, data)       
+        file_compress, compress_status, compress_end_datetime, filesize, compress_error = dartcom_compress(data, files_path, dartcom.dartcom_satelite.is_epsl0, epsl0_path)
+
+        path_transfer = file_compress
+        dartcom.set_compressed_status(compress_status)
+        dartcom.set_compressed_end_datetime(compress_end_datetime)
+        dartcom.set_filesize(filesize)
+
+        error_db = dado_repository.update_dartcom_compress(dartcom)
+        if error_db:
+            send_email('Falha ao atualizar dados na compactação', f'Favor verificar o ocorrido.\n\n{error_db}', True)
+            return
+
+        if compress_status == status_error:
+            # Erro ao compactar
+            # Envia e-mail comunicando o erro
+            send_email(f'Falha ao compactar {data}', f'Erro ao compactar o dado {data}.\n\nFavor realizar o processo novamente!\n\nDescrição do erro: \n\n{compress_error}\n\nAtenciosamente, \n\nCOIDS')
+            return
+    else:
+        dartcom.set_compressed_status(status_na)
+        dartcom.set_compressed_start_datetime(None)
+
+        # localizar o arquivo e pegar o tamanho
+        path_transfer, filesize, error_vcdu = dartcom_vcdu(files_path)
+        dartcom.set_filesize(filesize)
+
+        error_db = dado_repository.update_dartcom_vcdu(dartcom)
+        if error_db:
+            send_email('Falha ao atualizar dado vcdu', f'Favor verificar o ocorrido.\n\n{error_db}', True)
+            return
+        
+    # Atualiza o registro com o início do armazenamento
+    storing_start_datetime = get_datetime_str()
+    storing_status = status_running
+    dartcom.set_storing_start_datetime(storing_start_datetime)
+    if error_vcdu:
+        dartcom.set_storing_status(status_error)
+    else:
+        dartcom.set_storing_status(storing_status)
+
+    error_db = dado_repository.update_dartcom_storing_running(dartcom=dartcom)
+    if error_db:
+        send_email('Falha ao atualizar dados do armazenamento dartcom', f'Favor verificar o ocorrido.\n\n{error_db}', True)
+        return
+    
+    # ARAMAZENA O DADO
+    if storing_status != status_error:
+        storing_status, storing_end_datetime, storing_error = copy_dartcom(path_transfer, dartcom.dartcom_satelite, dartcom.missao, dartcom.date_path, filename)
+    if storing_status == status_error:
+        # Erro ao armazenar o dado
+        # Envia e-mail comunicando o erro
+        send_email(f'Falha ao armazenar o dartcom {data}', f'Erro ao armazenar o dartcom {data} na COIDS.\n\nFavor realizar o processo novamente!\n\nDescrição do erro: \n\n{storing_error}\n\nAtenciosamente, \n\nCOIDS')
+    
+    dartcom.set_storing_status(storing_status)
+    dartcom.set_storing_end_datetime(storing_end_datetime)
+
+    error_db = dado_repository.update_dartcom_storing_completed(dartcom=dartcom)
+    if error_db:
+        send_email('Falha ao atualizar dados do término do armazenamento dartcom', f'Favor verificar o ocorrido.\n\n{error_db}', True)
+
+def get_dartcom_epsl0_path(epsl0_template, data):
+    data = data.replace(".","_")
+    data_array = data.split("_")[2:7]
+    date = data_array[0]+"-"+data_array[1]+"-"+data_array[2]
+    time = data_array[3]+"-"+data_array[4]
+
+    epsl0_template = Template(template=epsl0_template)
+    return epsl0_template.substitute(date=date, time=time)
+
+def dartcom_vcdu(path):
+    error = None
+    vcdu_path = None
+    filesize = None
+    try:
+        vcdu_name = next((f for f in os.listdir(path) if f.endswith('.vcdu')), None)
+        if not vcdu_name:
+            error = 'VCDU não encontrado'
+        else:
+            vcdu_path = os.path.join(path, vcdu_name)
+            filesize = os.path.getsize(vcdu_path)
+
+        return vcdu_path, filesize, error
+    except Exception as e:
+        return vcdu_path, filesize, e
+
+def dartcom_compress(data, path, is_epsl0, epsl0_path_origin):
+    subfolder = os.path.join(path, data)
+    try:
+        if not os.path.exists(subfolder):
+            os.makedirs(subfolder)
+
+        files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+        for file in files:
+            renamed_file = data+'_'+file.split('_')[2]
+            file_path = os.path.join(path, file)
+            file_path_destiny = os.path.join(subfolder, renamed_file)
+            shutil.copy(file_path, file_path_destiny)
+
+        if is_epsl0:
+            epsl0_path_destiny = os.path.join(subfolder, 'EPSL0')
+            if not os.path.exists(epsl0_path_destiny):
+                os.makedirs(epsl0_path_destiny)
+
+            files_epsl0 = [f for f in os.listdir(epsl0_path_origin) if os.path.isfile(os.path.join(epsl0_path_origin, f))]
+            for file in files_epsl0:
+                renamed_epsl0_file = file.split('_')[0]+"_"+data
+                file_epsl0_path = os.path.join(epsl0_path_origin, file)
+                file_epsl0_path_destiny = os.path.join(epsl0_path_destiny, renamed_epsl0_file)
+                shutil.copy(file_epsl0_path, file_epsl0_path_destiny)
+
+        file_compress = shutil.make_archive(subfolder, 'gztar', subfolder)
+        filesize = os.path.getsize(file_compress)
+
+        # apaga subfolder
+        shutil.rmtree(subfolder)
+
+        compress_end_datetime = get_datetime_str()
+        compress_status = status_completed
+
+        return file_compress, compress_status, compress_end_datetime, filesize, None
+    except Exception as e:
+        compress_end_datetime = get_datetime_str()
+        compress_status = status_error        
+        return file_compress, compress_status, compress_end_datetime, filesize, e  
+
+
+# dados sensoriamento
+def search_files_md5():
+    if is_process_running(fdt_destiny_all):
+        print("O processo já está em execução.")
+        return True
+    else:
+        fdt_cmd = 'sudo -u transfcba java -jar {} -p {} -P 24 -pull -r -c {} -d {} {}'.format(fdt_service,fdt_port,fdt_server,fdt_destiny_all,fdt_origin_md5)
+        fdt_process = subprocess.Popen(fdt_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, error = fdt_process.communicate()
+        return False
+
+#dados meteorologicos
+def search_files_dartcom_cba():
+    if is_process_running(fdt_destiny_dartcom):
+        print("O processo já está em execução.")
+        return True
+    else:
+        fdt_cmd = 'sudo -u transfcba java -jar {} -p {} -P 24 -pull -r -c {} -d {} {}'.format(fdt_service,fdt_port_dartcom,fdt_server,fdt_destiny_dartcom,fdt_origin_dartcom)
+        fdt_process = subprocess.Popen(fdt_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, error = fdt_process.communicate()
+        return False
+    
+def search_files_dartcom_cp():
+    if is_process_running(scp_destiny_dartcom):
+        print("O processo já está em execução.")
+        return True
+    else:
+        dado_repository = DadoRepository()
+        antenas, error_db = dado_repository.get_dartcom_antena()
+        if error_db:
+            return
+
+        for antena in antenas:
+            satelites, error_db = dado_repository.get_dartcom_templates(id_dartcom_antena=antena.id)
+            if error_db:
+                return
+            
+            for satelite in satelites:
+                # se satelite possui path scp realiza a transferencia via scp
+                if satelite.get_template_path_origin_scp:
+                    date_now = get_date_str()
+                    template_path_origin_scp = Template(template=satelite.get_template_path_origin_scp)
+                    path_origin_scp = template_path_origin_scp.substitute(date=date_now)
+                    scp_cmd = 'scp -r {}@{}:{} {}'.format(scp_user, scp_ip, path_origin_scp, satelite.satelite_path)
+                    scp_process = subprocess.Popen()
+                    output, error = scp_process.communicate()
+        return False
+
+def is_process_running(fdt_origin_data):
+    ps_process = subprocess.Popen(['ps', '-eo', 'args'], stdout=subprocess.PIPE)
+    output_ps, _ = ps_process.communicate()
+    ps_output_lines = output_ps.decode('utf-8').split('\n')
+    filtered_lines = [line for line in ps_output_lines if fdt_origin_data in line]
+    for line in filtered_lines:
+        return True
+    return False
+
+def list_md5_search_data():
+    list_files_md5 = []
+    list_md5_error = []
+    if os.path.exists(fdt_destiny_md5):
+        files = os.listdir(fdt_destiny_md5)
+        for file in files:
+            # pega o tamanho do md5_cba
+            md5_size = os.path.getsize(fdt_destiny_md5 + '/' + file)
+
+            parts = file.split('.')  
+            if len(parts) >= 2:  
+                file_name = '.'.join(parts[:-1])
+                # caso o md5 esteja zerado
+                if md5_size == 0:
+                    # add para lista de erros
+                    list_md5_error.append(file_name)
+                else:
+                    # add para lista de arquivos para baixar
+                    list_files_md5.append(file_name)
+    else:
+        print('O diretório não existe')
+
+    return list_files_md5, list_md5_error
+
+def list_search_dartcom(path):
+    list_dartcom = []
+    try:
+        if os.path.exists(path):
+            dado_repository = DadoRepository()
+            antenas, error_db = dado_repository.get_dartcom_antena()
+            if error_db:
+                send_email('Falha ao listar antenas', f'Favor verificar o ocorrido.\n\n{error_db}', True)
+                return
+        
+            for antena in antenas:
+                satelites:List[DartcomSateliteModel] = dado_repository.get_dartcom_templates(antena.id)
+                for satelite in satelites:
+                    dates_dirs = os.listdir(satelite.satelite_path)
+                    for date_dir in dates_dirs:
+                        datas_dirs = os.listdir(f'{satelite.satelite_path}/{date_dir}')
+                        for data_dir in datas_dirs:
+                            missao = ''
+                            files_path = f'{satelite.satelite_path}/{date_dir}/{data_dir}'
+
+                            date_now = datetime.now()
+                            date_modified = datetime.fromtimestamp(os.path.getmtime(files_path))
+
+                            diff = date_now - date_modified
+                            if diff >= timedelta(minutes=dartcom_time_min):
+                                if satelite.command:
+                                    missao = define_missao(files_path, satelite.command)
+                                dartcom_name = define_dartcom_name(data_dir, satelite, missao)
+                                list_dartcom.append((dartcom_name, missao, files_path, satelite, date_modified, date_dir))
+        return list_dartcom, None
+    except Exception as e:
+        print(e)
+        return None, e
+    
+def get_new_files_dartcom(lista):
+    new_dartcoms = []
+
+    dado_repository = DadoRepository()
+    for data, missao, files_path, satelite, date_modified in lista:
+        file_found, error_db = dado_repository.find_dartcom(data)
+        # envia email caso ocorra erro no bd
+        if error_db:
+            # envia email
+            send_email(subject='Falha na busca do dado', body=f'Favor verificar o ocorrido.\n\n{error_db}', is_adm=True)
+            continue
+        # se dado ja registrado
+        if not file_found:
+            # se dado nao cadastrado, add na lista new_dartcoms
+            new_dartcoms.append((data, missao, files_path, satelite, date_modified))
+
+    return new_dartcoms
+
+def define_dartcom_name(data_dir, satelite, missao):
+    datetime = data_dir.split(" ")
+    date = datetime[0].replace("-", "_")
+    time = datetime[1].replace("-", "_")
+
+    name_template = Template(template=satelite.template_name)
+    name = name_template.substitute(date=date, time=time, missao=missao)
+
+    return name
+
+def define_missao(path, command):
+    infos = glob.glob(os.path.join(path, '**', '*.info'), recursive=False)
+    error = ''
+    if infos:
+        info_path = path+'/'+infos[0]
+        command_template = Template(template=command)
+        command = command_template.substitute(file=info_path)
+        info_process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, error_command = info_process.communicate()
+        missao = output.decode()
+        error = error_command.decode()
+
+        # verifica se é número ou letra
+        if missao.isnumeric():
+            missao = '_'+missao
+        else:
+            missao = '-'+missao
+
+        return missao, error
+    else:
+        error = 'file not found'
+        return None, error
+
 def search_retries():
     dado_repository = DadoRepository()
     retries, error_db = dado_repository.get_retries()    
+    if not error_db:
+        print(retries)
+        return retries
+    return None
+
+def search_dartcom_retries():
+    dado_repository = DadoRepository()
+    retries, error_db = dado_repository.get_retries_dartcom()
     if not error_db:
         print(retries)
         return retries
@@ -121,16 +608,15 @@ def get_new_files_list(files):
         if not re.match(pattern, data): continue
 
         file_found, error_db = dado_repository.find_data(data)
+        # envia email caso ocorra erro no bd
+        if error_db:
+            # envia email
+            send_email(subject='Falha na busca do dado', body=f'Favor verificar o ocorrido.\n\n{error_db}', is_adm=True)
+            continue
         # se dado ja registrado
-        if file_found:
-            # envia email caso ocorra erro no bd
-            if error_db:
-                # envia email
-                send_email(subject='Falha na busca do dado', body=f'Favor verificar o ocorrido.\n\n{error_db}', is_adm=True)
-                continue
-        else:
+        if not file_found:
             # se dado nao cadastrado, add na lista new_files_list
-            new_files_list.append(data)
+            new_files_list.append(data)            
 
     return new_files_list
 
@@ -215,14 +701,13 @@ def create_pdf(dados, daily_volume, date_start, date_end, volume_fig, quantidade
     response.headers['Content-Disposition'] = 'inline; filename="relatorio_de_transferencia_de_dados.pdf"'
     response.headers['Content-Type'] = 'application/pdf'
     return response
- 
 
 # Fluxo:
 # Baixar arquivo
 # Gerar MD5-CP
 # Validar MD5
 # Armazenar dado
-        
+
 # inicia o processo de transferencia
 def transfer_file(data):
     if not data: return
@@ -252,8 +737,7 @@ def transfer_file(data):
         send_email('Falha no registro da tabela dado', f'Favor verificar o ocorrido.\n\n{error_db}', True)
         return
     
-    transfer_list.remove(data)
-    
+    transfer_list.remove(data)    
     dado.set_id(id_dado)
 
     # BAIXA O ARQUIVO
@@ -627,50 +1111,24 @@ def copy_file(data, storage_data, satelity):
     except Exception as e:
         storing_end_datetime = get_datetime_str()
         storing_status = status_error        
-        return storing_status, storing_end_datetime, e     
+        return storing_status, storing_end_datetime, e    
 
-def search_files_md5():
-    if is_process_running(fdt_destiny_all):
-        print("O processo já está em execução.")
-        return True
-    else:
-        fdt_cmd = 'sudo -u transfcba java -jar {} -p {} -P 24 -pull -r -c {} -d {} {}'.format(fdt_service,fdt_port,fdt_server,fdt_destiny_all,fdt_origin_md5)
-        fdt_process = subprocess.Popen(fdt_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = fdt_process.communicate()
-        return False
+def copy_dartcom(path_transfer, satelite, missao, date_dir, filename):
+    missao = '' if not missao else missao
+    date_array = date_dir.split("-")
+    date = date_array[0]+"_"+date_array[1]
+    storage = storage_path + satelite.nome + missao + "/" + date + "/" + satelite.sensor + "/"+ filename
+    try:
+        os.makedirs(os.path.dirname(storage), exist_ok=True)
+        shutil.copy(path_transfer, storage)
+        storing_end_datetime = get_datetime_str()
+        storing_status = status_completed
 
-def is_process_running(fdt_origin_data):
-    ps_process = subprocess.Popen(['ps', '-eo', 'args'], stdout=subprocess.PIPE)
-    output_ps, _ = ps_process.communicate()
-    ps_output_lines = output_ps.decode('utf-8').split('\n')
-    filtered_lines = [line for line in ps_output_lines if fdt_origin_data in line]
-    for line in filtered_lines:
-        return True
-    return False
-
-def list_md5_search_data():
-    list_files_md5 = []
-    list_md5_error = []
-    if os.path.exists(fdt_destiny_md5):
-        files = os.listdir(fdt_destiny_md5)
-        for file in files:
-            # pega o tamanho do md5_cba
-            md5_size = os.path.getsize(fdt_destiny_md5 + '/' + file)
-
-            parts = file.split('.')  
-            if len(parts) >= 2:  
-                file_name = '.'.join(parts[:-1])
-                # caso o md5 esteja zerado
-                if md5_size == 0:
-                    # add para lista de erros
-                    list_md5_error.append(file_name)
-                else:
-                    # add para lista de arquivos para baixar
-                    list_files_md5.append(file_name)
-    else:
-        print('O diretório não existe')
-
-    return list_files_md5, list_md5_error
+        return storing_status, storing_end_datetime, None
+    except Exception as e:
+        storing_end_datetime = get_datetime_str()
+        storing_status = status_error        
+        return storing_status, storing_end_datetime, e    
 
 def define_directory(file1):
     sat_partes = file1.split('_')
@@ -806,6 +1264,9 @@ def send_email_user(email, body, subject):
 
 def get_datetime_str():
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+def get_date_str():
+    return datetime.now().strftime('%Y-%m-%d')
 
 def convert_datetime_to_string(data:datetime):
     return data.strftime('%d/%m/%Y')

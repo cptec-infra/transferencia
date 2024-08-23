@@ -16,6 +16,7 @@
     --primary-color-light: #F6F5FF;
     --toggle-color: #DDD;
     --text-color: #707070;
+    --text-color-rgb: 112, 112, 112;
     --filter-color: invert(0);
 
 
@@ -79,7 +80,7 @@ input[type="date"].dark {
 }
 
 body::-webkit-scrollbar {
-    width: 16px;
+    width: 8px;
 }
   
 body::-webkit-scrollbar-track {
@@ -99,6 +100,7 @@ body.dark {
     --primary-color-light: #3A3B3C;
     --toggle-color: #FFF;
     --text-color: #CCC;
+    --text-color-rgb: 204, 204, 204;    
     --filter-color: invert(1);
 }
 
@@ -337,6 +339,27 @@ body.dark .sidebar header .toggle {
 
 .sidebar .menu {
     margin-top: 35px;
+}
+
+.submenu {
+    border: 1px solid rgba(var(--text-color-rgb), 0.2);
+    border-radius: 8px;
+    background-color: var(--background-color); 
+    box-shadow: 0 4px 7px rgba(0, 0, 0, 0.05); 
+    margin-top: 2%;
+}
+.submenu li:first-child{
+    margin-top:0px;
+}
+
+.sensing {
+    display: block;
+    margin-left: 15%;
+}
+
+.meteorology {
+    display: block;
+    margin-left: 15%;
 }
 
 .sidebar .search-box {
@@ -633,6 +656,7 @@ body.dark .cell{
 }
 
 .cell .status.concluido,
+.cell .status.na,
 .cell .status.sim {
     background-color: green;
 }

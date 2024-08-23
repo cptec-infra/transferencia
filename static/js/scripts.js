@@ -7,7 +7,40 @@ const searchInput = document.getElementById("search-input");
 const searchData = document.getElementById("search-data");
 const clearSearch = document.getElementById("clear-search");
 const searchSubmit = document.getElementById("search-submit");
+const sensing = document.getElementById("sensing");
+const meteorology = document.getElementById("meteorology");
+const sensingMenuState = localStorage.getItem("sensingMenu");
+const meteorologyMenuState = localStorage.getItem("meteorologyMenu");
 
+
+const toggleVisibility = (element, menuName) => {
+    if (element.style.display === "block" || element.style.display === "") {
+        element.style.display = "none";
+        localStorage.setItem(menuName, "hidden");
+    } else {
+        element.style.display = "block";
+        localStorage.setItem(menuName, "visible");
+    }
+};
+
+window.onload = function() {    
+    if (sensingMenuState === "hidden") {
+        document.querySelector(".sensing").style.display = "none";
+    }
+
+    if (meteorologyMenuState === "hidden") {
+        document.querySelector(".meteorology").style.display = "none";
+    }
+};
+
+
+sensing.addEventListener("click", function() {
+    toggleVisibility(document.querySelector(".sensing"), "sensingMenu");
+});
+
+meteorology.addEventListener("click", function() {
+    toggleVisibility(document.querySelector(".meteorology"), "meteorologyMenu");
+});
 
 toggle.addEventListener("click", () => {
     sidebar.classList.toggle("close");
@@ -43,26 +76,26 @@ clearSearch.addEventListener("click", () => {
     $(".dados .row.click").show();
 });
 
-searchButton.addEventListener("click", (event) => {
-    event.preventDefault();
-    if (searchBox.style.display === "none" || searchBox.style.display === "") {
-        searchBox.style.display = "block";
-    } else {
-        searchBox.style.display = "none";
-    }
-});
+// searchButton.addEventListener("click", (event) => {
+//     event.preventDefault();
+//     if (searchBox.style.display === "none" || searchBox.style.display === "") {
+//         searchBox.style.display = "block";
+//     } else {
+//         searchBox.style.display = "none";
+//     }
+// });
 
 function goBack() {
     window.history.back();
 }
 
-function reloadPage() {
-    setInterval(function() {    
-        if(searchBox.style.display != "block"){
-            location.reload(true);
-        }
-    }, 15000);
-}
+// function reloadPage() {
+//     setInterval(function() {    
+//         if(searchBox.style.display != "block"){
+//             location.reload(true);
+//         }
+//     }, 15000);
+// }
 
 document.addEventListener('DOMContentLoaded', function() {
     var select = document.getElementById('items_per_page');

@@ -23,18 +23,20 @@ app.secret_key = config.get('FLASK', 'flask_key')
 fdt_server = config.get('FDT', 'fdt_server')
 fdt_port = config.get('FDT', 'fdt_port')
 
-def background_thread():
-    with app.app_context():
-        minutes = 2 * 60
-        while True:
-            print('iniciando background')
-            background_process()
-            time.sleep(minutes)
+last_timeout = None
 
-# Inicie o thread para executar a função em segundo plano
-thread = threading.Thread(target=background_thread)
-thread.daemon = True
-thread.start()
+# def background_thread():
+#     with app.app_context():
+#         minutes = 2 * 60
+#         while True:
+#             print('iniciando background')
+#             background_process()
+#             time.sleep(minutes)
+
+# # Inicie o thread para executar a função em segundo plano
+# thread = threading.Thread(target=background_thread)
+# thread.daemon = True
+# thread.start()
 
 @app.route('/', methods=['GET', 'POST'])
 def index():    
@@ -58,6 +60,45 @@ def index():
     else:
         return redirect(url_for('login'))
 
+@app.route('/dartcom', methods=['GET', 'POST'])
+def dartcom():    
+    if is_logado():
+        page = request.args.get('pag', 1, type=int)
+        search_data = request.args.get('search', type=str)
+        per_page = int(request.args.get('items', 25)) 
+
+        if request.method == 'POST' and 'search-data' in request.form:
+            search_data = request.form['search-data']        
+
+        dado_repository = DadoRepository()
+        dartcoms, error_db = dado_repository.get_dartcom_all(search_data)
+
+        if error_db:
+            send_email(subject='Falha na rota dartcom', body=f'Favor verificar o ocorrido.\n\n{error_db}', is_adm=True)
+            return render_template('dartcom_index.html', dartcoms=[], msg='Erro no banco de dados')
+        else:
+            dados_paginado, total_pages = pagination(dartcoms, page, per_page)
+            return render_template('dartcom_index.html', dartcoms=dados_paginado, page=page, per_page=per_page, total_pages=total_pages, transfer_list=get_dartcom_list(), daily_volume=dado_repository.get_dartcom_daily_volume(), search_data=search_data)
+    else:
+        return redirect(url_for('login'))
+    
+@app.route('/dartcom/<int:id_dartcom>')
+def dartcom_dado(id_dartcom):
+    if is_logado():
+        dado_repository = DadoRepository()
+        id_dartcom, error_db = dado_repository.get_dartcom(id_dartcom=id_dartcom)
+        if error_db:
+            send_email(subject='Falha na rota dartcom', body=f'Favor verificar o ocorrido.\n\n{error_db}', is_adm=True)
+            return render_template('dado_dartcom.html', dartcom = dartcom, msg = 'Erro no banco de dados')
+        
+        historico, error_db = dado_repository.get_dartcom_history(id_dartcom=id_dartcom)
+        if error_db:
+            send_email(subject='Falha na rota dartcom', body=f'Favor verificar o ocorrido.\n\n{error_db}', is_adm=True)
+            return render_template('dado_dartcom.html', msg = 'Erro no banco de dados')
+        
+        return render_template('dado_dartcom.html', dartcom = dartcom, historico = historico)
+    else:
+        return redirect(url_for('login'))
 
 @app.route('/dado/<int:id_dado>')
 def dado(id_dado):
@@ -96,6 +137,90 @@ def errors():
             return render_template('errors.html', dados = [], msg = 'Erro no banco de dados')
         else:
             return render_template('errors.html', dados = dados)
+    else:
+        return redirect(url_for('login'))
+    
+@app.route('/dartcom_erro', methods=['GET', 'POST'])
+def dartcom_erro():
+    if is_logado():
+        dado_repository = DadoRepository()
+        
+        if not is_visitante():
+            if request.method == 'POST' and 'selected' in request.form:
+                selected = request.form['selected'].split(',')
+                error_db_retry = dado_repository.set_retry(selected=selected)
+                print(error_db_retry)
+                if error_db_retry:
+                    send_email(subject='Falha ao registrar retry', body=f'Favor verificar o ocorrido.\n\n{error_db_retry}', is_adm=True)
+        
+        dados, error_db = dado_repository.get_errors()
+        if error_db:
+            send_email(subject='Falha na rota errors', body=f'Favor verificar o ocorrido.\n\n{error_db}', is_adm=True)
+            return render_template('dartcom_errors.html', dados = [], msg = 'Erro no banco de dados')
+        else:
+            return render_template('dartcom_errors.html', dados = dados)
+    else:
+        return redirect(url_for('login'))
+    
+@app.route('/dartcom/settings', methods=['GET', 'POST'])
+def dartcom_settings():
+    if is_logado():        
+        if is_adm():
+            msg = ''
+            form = request.form
+
+            dado_repository = DadoRepository()
+            
+            if request.method == 'POST':
+                if 'id-dartcom-antena' in form and 'antena' in form:
+                    id = form['id-dartcom-antena']
+                    antena = form['antena']
+
+                    if id:
+                        # editar
+                        dado_repository.update_antena(id=id, antena=antena)
+                    else:
+                        # cadastrar a antena
+                        dado_repository.insert_antena(antena)
+
+                elif all(key in form for key in ['id-dartcom-satelite','id-dartcom-antena', 'nome', 'sensor', 'data-type', 'satelite-path', 'template-name', 'command', 'is-compressed', 'is-epsl0', 'epsl0-template']):
+                    id = form['id-dartcom-satelite']
+                    id_dartcom_antena = form['id-dartcom-antena']
+                    nome = form['nome']
+                    sensor = form['sensor']
+                    data_type = form['data-type']
+                    satelite_path = form['satelite-path']
+                    template_name = form['template-name']
+                    command = form[ 'command']
+                    is_compressed = form['is-compressed']
+                    is_epsl0 = 'is-epsl0' in form
+                    template_path_origin_scp = '' if 'template-path-origin-scp' not in form else form['template-path-origin-scp']
+
+                    if is_epsl0 and 'epsl0-template' in form:
+                        epsl0_template = form[ 'epsl0-template']
+                        template_path_origin_scp = form['template-path-origin-scp']
+
+                        satelite = DartcomSateliteModel(id_dartcom_antena=id_dartcom_antena, nome=nome, sensor=sensor, data_type=data_type, satelite_path=satelite_path, template_name=template_name, command=command, is_compressed=is_compressed, is_epsl0=is_epsl0, epsl0_template=epsl0_template, template_path_origin_scp=template_path_origin_scp)
+
+                        if id:
+                            # editar
+                            error_db = dado_repository.update_satelite(satelite=satelite)
+                            if error_db:
+                                send_email(subject='Falha ao editar satélite', body=f'Favor verificar o ocorrido.\n\n{error_db}', is_adm=True)
+                                msg = 'Falha ao editar satélite'
+                        else:
+                            #cadastrar
+                            msg, error_db = dado_repository.insert_satelite(satelite=satelite)
+                            if error_db:
+                                send_email(subject='Falha ao cadastrar usuário', body=f'Favor verificar o ocorrido.\n\n{error_db}', is_adm=True)
+                                msg = 'Falha ao cadastrar usuário'
+
+            satelites, error_db = dado_repository.get_dartcom_satelites()
+            antenas, error_db = dado_repository.get_dartcom_antena()
+
+            return render_template('dartcom_cadastros.html', satelites = satelites, antenas = antenas, msg = msg)
+        else:
+            return redirect(url_for('index'))    
     else:
         return redirect(url_for('login'))
     
@@ -418,14 +543,24 @@ def settings():
 def check_service_connection():
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(2)
+        sock.settimeout(5)
         sock.connect((fdt_server, int(fdt_port)))
         sock.close()
 
         return jsonify({'status': 'success'})
     except socket.error as e:
         error_message = str(e)
-        send_email('Erro na conexão com o servidor FDT', f'Ocorreu um erro na comunicação com o serviço FDT na CORCR - Cuiabá.\n\nInformativo do erro: {error_message}')
+
+        # verifica se last_timeout é None, se True define com data atual (now)
+        is_first_timeout = False
+        if not last_timeout:
+            is_first_timeout = True
+            last_timeout = datetime.now()
+        # calcula a diferença entre a data atual e o último timeout
+        timeout_diff = datetime.now() - last_timeout
+        # se a diferença for pelo menos 5 minutos
+        if timeout_diff >= timedelta(minutes=5) or is_first_timeout:
+            send_email('Erro na conexão com o servidor FDT', f'Ocorreu um erro na comunicação com o serviço FDT na CORCR - Cuiabá.\n\nInformativo do erro: {error_message}')
         return jsonify({'status': 'error', 'message': error_message})
     except Exception as e:
         error_message = str(e)

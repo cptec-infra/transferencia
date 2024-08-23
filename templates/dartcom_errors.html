@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block title %}Erros{% endblock %}
+
+{% block status %}
+    <div id="connection-status" class="connection-status">
+        Status
+        <svg id="connection-icon" class="connection-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <circle id="connection-circle" cx="12" cy="12" r="10" />
+        </svg>        
+    </div> 
+{% endblock %}
+
+{% block content %}
+<div class="text">Erros</div>
+{% if msg %}
+<h4>Mensagem: {{ msg }}</h4>
+{% endif %}
+{% if session['perfil'] != 'visitante' %}
+<div style="text-align: right;">
+    <button type="button" class="button"  id="retry-errors">Retentar</button>
+</div>
+{% endif %}
+<br>
+
+<div class="dados">
+<div class="table">
+
+    <div class="row header">
+        <div class="cell name">Nome</div>
+        <div class="cell fixed">Compactar</div>
+        <div class="cell fixed">Armazenamento</div>
+    </div>
+
+    {% for dartcom in dartcoms %}
+    <div class="row">
+        <div class="cell name">
+            {% if session['perfil'] != 'visitante' %}
+            <input type="checkbox" name="{{ dartcom.id }}">
+            {% endif%}
+            {{ dartcom.nome }}
+        </div>
+        <div class="cell fixed">
+            <div class="status {{ dartcom.compressed_status|class_status }}">
+                {{ dartcom.compressed_status if dartcom.compressed_status else 'Não executado' }}
+            </div>
+        </div>
+        <div class="cell fixed">
+            <div class="status {{ dartcom.storing_status|class_status }}">
+                {{ dartcom.storing_status if dado.storing_status else 'Não executado' }}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+</div>
+{% endblock %}
+
+{% block scripts%}
+<!-- <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script> -->
+{% if session['perfil'] != 'visitante' %}
+<script>
+    $('#retry-errors').on("click", async function() {
+        var lista = document.getElementsByTagName("INPUT");
+        var selected = [];
+        const formData = new URLSearchParams();
+        for (loop = 0; loop < lista.length; loop++){
+            var item = lista[loop];
+            if (item.type == "checkbox" && item.checked){
+                selected.push(item.name);
+            }
+        }
+        selected.sort();
+        formData.append('selected', selected);
+
+        await fetch('/dartcom_erro', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: formData
+        });
+        location.reload();
+    });
+    
+    // reload page
+    reloadPage();
+</script>
+{% endif %}
+{% endblock%}
