@@ -85,6 +85,14 @@
                             <span class="text nav-text">Erros</span>
                         </a>
                     </li>
+                    {% if session['perfil'] == 'administrador' %}
+                    <li class="nav-link">
+                        <a href="{{ url_for('dartcom_settings')}}">
+                            <i class="fas fa-satellite icon"></i>
+                            <span class="text nav-text">Satélites</span>
+                        </a>
+                    </li>
+                    {% endif %}
                 </div>
             </div>
 

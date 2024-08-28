@@ -48,7 +48,7 @@ dartcom_time_min = config.getint('DARTCOM', 'dartcom_time_min')
 
 # SCP
 scp_destiny_dartcom = config.get('SCP', 'scp_destiny_dartcom')
-scp_origin_dartcom = config.get('SCP', 'scp_origin_dartcom')
+# scp_origin_dartcom = config.get('SCP', 'scp_origin_dartcom')
 scp_user = config.get('SCP','scp_user')
 scp_ip = config.get('SCP','scp_ip')
 
@@ -459,7 +459,7 @@ def search_files_dartcom_cp():
                     template_path_origin_scp = Template(template=satelite.get_template_path_origin_scp)
                     path_origin_scp = template_path_origin_scp.substitute(date=date_now)
                     scp_cmd = 'scp -r {}@{}:{} {}'.format(scp_user, scp_ip, path_origin_scp, satelite.satelite_path)
-                    scp_process = subprocess.Popen()
+                    scp_process = subprocess.Popen(scp_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     output, error = scp_process.communicate()
         return False
 

@@ -25,18 +25,30 @@ fdt_port = config.get('FDT', 'fdt_port')
 
 last_timeout = None
 
-# def background_thread():
-#     with app.app_context():
-#         minutes = 2 * 60
-#         while True:
-#             print('iniciando background')
-#             background_process()
-#             time.sleep(minutes)
+def background_thread():
+    with app.app_context():
+        minutes = 2 * 60
+        while True:
+            print('iniciando background')
+            background_process()
+            time.sleep(minutes)
 
-# # Inicie o thread para executar a função em segundo plano
-# thread = threading.Thread(target=background_thread)
-# thread.daemon = True
-# thread.start()
+def background_thread_dartcom():
+    with app.app_context():
+        minutes = 2 * 60
+        while True:
+            print('iniciando background dartcom')
+            background_process_dartcom()
+            time.sleep(minutes)
+
+# Inicie o thread para executar a função em segundo plano
+thread1 = threading.Thread(target=background_thread)
+thread1.daemon = True
+thread1.start()
+
+thread2 = threading.Thread(target=background_thread_dartcom)
+thread2.daemon = True
+thread2.start()
 
 @app.route('/', methods=['GET', 'POST'])
 def index():    
@@ -140,7 +152,7 @@ def errors():
     else:
         return redirect(url_for('login'))
     
-@app.route('/dartcom_erro', methods=['GET', 'POST'])
+@app.route('/dartcom/erro', methods=['GET', 'POST'])
 def dartcom_erro():
     if is_logado():
         dado_repository = DadoRepository()
@@ -168,12 +180,11 @@ def dartcom_settings():
         if is_adm():
             msg = ''
             form = request.form
-
             dado_repository = DadoRepository()
             
-            if request.method == 'POST':
-                if 'id-dartcom-antena' in form and 'antena' in form:
-                    id = form['id-dartcom-antena']
+            if request.method == "POST":
+                if 'id-antena' in form and 'antena' in form:
+                    id = form['id-antena']
                     antena = form['antena']
 
                     if id:
@@ -183,44 +194,43 @@ def dartcom_settings():
                         # cadastrar a antena
                         dado_repository.insert_antena(antena)
 
-                elif all(key in form for key in ['id-dartcom-satelite','id-dartcom-antena', 'nome', 'sensor', 'data-type', 'satelite-path', 'template-name', 'command', 'is-compressed', 'is-epsl0', 'epsl0-template']):
-                    id = form['id-dartcom-satelite']
-                    id_dartcom_antena = form['id-dartcom-antena']
-                    nome = form['nome']
+                # elif all(key in form for key in ['id-satelite','antena', 'satelite', 'sensor', 'data-type', 'satelite-path', 'template-name', 'is-compressed', 'epsl0']):
+                elif all(key in form for key in ['id-satelite','antena', 'satelite', 'sensor', 'data-type', 'satelite-path', 'template-name']):
+                    id = form['id-satelite']
+                    id_dartcom_antena = form['antena']
+                    nome = form['satelite']
                     sensor = form['sensor']
                     data_type = form['data-type']
                     satelite_path = form['satelite-path']
                     template_name = form['template-name']
-                    command = form[ 'command']
-                    is_compressed = form['is-compressed']
-                    is_epsl0 = 'is-epsl0' in form
-                    template_path_origin_scp = '' if 'template-path-origin-scp' not in form else form['template-path-origin-scp']
+                    command = form['command']
+                    is_compressed = 1 if form.get('is-compressed') == 'on' else 0
+                    is_epsl0 = 1 if form.get('epsl0') == 'on' else 0
 
-                    if is_epsl0 and 'epsl0-template' in form:
-                        epsl0_template = form[ 'epsl0-template']
-                        template_path_origin_scp = form['template-path-origin-scp']
+                    epsl0_template = form['epsl0-template']
+                    template_path_origin_scp = form['template-path-origin-scp']
 
-                        satelite = DartcomSateliteModel(id_dartcom_antena=id_dartcom_antena, nome=nome, sensor=sensor, data_type=data_type, satelite_path=satelite_path, template_name=template_name, command=command, is_compressed=is_compressed, is_epsl0=is_epsl0, epsl0_template=epsl0_template, template_path_origin_scp=template_path_origin_scp)
+                    satelite = DartcomSateliteModel(id=id, id_dartcom_antena=id_dartcom_antena, nome=nome, sensor=sensor, data_type=data_type, satelite_path=satelite_path, template_name=template_name, command=command, is_compressed=is_compressed, is_epsl0=is_epsl0, epsl0_template=epsl0_template, template_path_origin_scp=template_path_origin_scp)
 
-                        if id:
-                            # editar
-                            error_db = dado_repository.update_satelite(satelite=satelite)
-                            if error_db:
-                                send_email(subject='Falha ao editar satélite', body=f'Favor verificar o ocorrido.\n\n{error_db}', is_adm=True)
-                                msg = 'Falha ao editar satélite'
-                        else:
-                            #cadastrar
-                            msg, error_db = dado_repository.insert_satelite(satelite=satelite)
-                            if error_db:
-                                send_email(subject='Falha ao cadastrar usuário', body=f'Favor verificar o ocorrido.\n\n{error_db}', is_adm=True)
-                                msg = 'Falha ao cadastrar usuário'
+                    if id:
+                        # editar
+                        error_db = dado_repository.update_satelite(id=id, satelite=satelite)
+                        if error_db:
+                            send_email(subject='Falha ao editar satélite', body=f'Favor verificar o ocorrido.\n\n{error_db}', is_adm=True)
+                            msg = 'Falha ao editar satélite'
+                    else:
+                        #cadastrar
+                        msg, error_db = dado_repository.insert_satelite(satelite=satelite)
+                        if error_db:
+                            send_email(subject='Falha ao cadastrar satélite', body=f'Favor verificar o ocorrido.\n\n{error_db}', is_adm=True)
+                            msg = 'Falha ao cadastrar satélite'
 
             satelites, error_db = dado_repository.get_dartcom_satelites()
             antenas, error_db = dado_repository.get_dartcom_antena()
 
             return render_template('dartcom_cadastros.html', satelites = satelites, antenas = antenas, msg = msg)
         else:
-            return redirect(url_for('index'))    
+            return redirect(url_for('dartcom'))    
     else:
         return redirect(url_for('login'))
     

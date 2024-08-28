@@ -3,8 +3,9 @@
 {% block title %}Cadastros{% endblock %}
 
 {% block content %}
+<!-- Satelites -->
 <div class="dados">
-    <div class="text">Cadastros</div>
+    <div class="text">Satélites</div>
     <div style="text-align: right;">
         <button type="button" class="button" data-toggle="modal" data-target="#antenas-modal">Antenas</button>
         <button type="button" class="button" data-toggle="modal" data-target="#satelite-modal">Cadastrar novo Satélite</button>
@@ -16,27 +17,136 @@
     
     <div class="table">
         <div class="row header">
+            <div class="cell fixed">Antena</div>
             <div class="cell fixed">Nome</div>
             <div class="cell fixed">Sensor</div>
-            <div class="cell fixed">Tipo</div>
+            <div class="cell fixed">Compactado</div>
+            <div class="cell fixed">EPSL0</div>
         </div>
         
-        {% for satelite in satelites %}
-   
+        {% for satelite in satelites %}   
         <div class="row">
-            <div class="cell fixed">{{ satelite.nome }}</div>
-            <div class="cell fixed">{{ satelite.sensor }}</div>
-            <div class="cell fixed">{{ satelite.is_compressed }}</div>
-            <div class="cell fixed">{{ satelite.is_epsl0 }}</div>
+            <div class="cell fixed">{{ satelite.antena }}</div>
+            <div class="cell fixed">{{ satelite.satelite.nome }}</div>
+            <div class="cell fixed">{{ satelite.satelite.sensor }}</div>
+            <div class="cell fixed">{{ 'Sim' if satelite.satelite.is_compressed else 'Não'}}</div>
+            <div class="cell fixed">{{ 'Sim' if satelite.satelite.is_epsl0 else 'Não'}}</div>
             <div class="cell fixed">
-                <button type="button" class="button button-small" data-toggle="modal" data-target="#satelite-modal" data-id="{{ satelite.id }}">Editar</button>
-            </div>
+                <button type="button" class="button button-small" data-toggle="modal" data-target="#satelite-modal" 
+                    data-idSatelite="{{satelite.satelite.id}}" 
+                    data-antena="{{satelite.satelite.id_dartcom_antena}}" 
+                    data-satelite="{{satelite.satelite.nome}}" 
+                    data-sensor="{{satelite.satelite.sensor}}" 
+                    data-dataType="{{satelite.satelite.data_type}}" 
+                    data-satelitePath="{{satelite.satelite.satelite_path}}" 
+                    data-templateName="{{satelite.satelite.template_name}}" 
+                    data-command="{{satelite.satelite.command}}" 
+                    data-isCompressed="{{satelite.satelite.is_compressed}}" 
+                    data-epsl0="{{satelite.satelite.is_epsl0}}" 
+                    data-epsl0Template="{{satelite.satelite.epsl0_template}}" 
+                    data-templatePathOriginScp="{{satelite.satelite.template_path_origin_scp}}">Editar</button>
+             </div>
         </div>
         {% endfor %}
     </div>
+        
+    <div id="satelite-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="modal-close" data-dismiss="modal" aria-label="Fechar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <span class="modal-title" id="sateliteModalLabel">Cadastro</span>
+            </div>
+            <div class="modal-body">
+                <form action="{{ url_for('dartcom_settings')}}" method="post" autocomplete="off"> 
+                <input type="hidden" id="id-satelite" name="id-satelite"> <br>
+                <div class="form-check">
+                    <label class="form-check-label" for="antena">Antena:</label><br>
+                    <select class="form-control" id="antena" name="antena">
+                        {% for antena in antenas %} 
+                            <option value="{{ antena.id }}">{{antena.nome}}</option>
+                        {% endfor %}
+                    </select>
+                    <br>
+                </div>
+                <div class="form-group">
+                    <label for="satelite">Nome:</label><br>
+                    <input type="text" class="form-control" id="satelite" name="satelite" placeholder="Digite o nome" required><br>
+                </div>
+                <div class="form-group">
+                    <label for="sensor">Sensor:</label><br>
+                    <input type="text" class="form-control" id="sensor" name="sensor" placeholder="Digite o sensor" required><br>
+                </div>
+                <div class="form-group">
+                    <label for="data-type">Tipo de dado:</label><br>
+                    <input type="text" class="form-control" id="data-type" name="data-type" placeholder="Digite o tipo de dado" required><br>
+                </div>
+                <div class="form-group">
+                    <label for="satelite-path">Pasta destino:</label><br>
+                    <input type="text" class="form-control" id="satelite-path" name="satelite-path" placeholder="Digite a pasta destino" required><br>
+                </div>
+                <div class="form-group">
+                    <label for="template-name">Nome modelo:</label><br>
+                    <input type="text" class="form-control" id="template-name" name="template-name" placeholder="Digite o modelo de nomenclatura" required><br>
+                </div>
+                <div class="form-group">
+                    <label for="command">Comando:</label><br>
+                    <input type="text" class="form-control" id="command" name="command" placeholder="Digite o comando para identifcar a missão"><br>
+                </div>
+                <br>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="is-compressed" name="is-compressed">
+                    <label class="form-check-label" for="is-compressed">Compactação</label><br>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="epsl0" name="epsl0">
+                    <label class="form-check-label" for="epsl0">EPSL0</label><br>
+                </div>
+                <br>
+                <div class="form-group">
+                    <label for="epsl0-template">Pasta EPSL0:</label><br>
+                    <input type="text" class="form-control" id="epsl0-template" name="epsl0-template" placeholder="Digite o caminho do EPSL0"><br>
+                </div>
+                <div class="form-group">
+                    <label for="template-path-origin-scp">Pasta SCP:</label><br>
+                    <input type="text" class="form-control" id="template-path-origin-scp" name="template-path-origin-scp" placeholder="Digite o caminho via SCP"><br>
+                </div>
+                <div class="text-right">
+                    <button type="button" class="button button-secondary" data-dismiss="modal">Fechar</button>
+                    <button type="submit" class="button" id="btn-submit">Salvar</button>
+                </form>
+            </div>    
+        </div>
+    </div>
+</div>
+        
+<!-- Antenas -->
+<div id="antenas-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="modal-close" data-dismiss="modal" aria-label="Fechar">
+                <span aria-hidden="true">&times;</span>
+            </button>
+            <button type="button" class="button button-small" data-toggle="modal" data-target="#form-antena-modal">Cadastrar</button>
+        </div>       
+        <div class="table">
+            <div class="row header">
+                <div class="cell fixed">Antenas</div>
+            </div>
+            {% for antena in antenas %}       
+            <div class="row">
+                <div class="cell fixed">{{ antena.nome }}</div>
+                <div class="cell fixed">
+                    <button type="button" class="button button-small" data-toggle="modal" data-target="#form-antena-modal" data-id="{{ antena.id }}" data-nome="{{ antena.nome }}">Editar</button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
 </div>
 
-<div id="antenas-modal" class="modal">
+<div id="form-antena-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
             <button type="button" class="modal-close" data-dismiss="modal" aria-label="Fechar">
@@ -46,144 +156,93 @@
         </div>
         <div class="modal-body">
             <form action="{{ url_for('dartcom_settings')}}" method="post" autocomplete="off"> 
-            <input type="hidden" id="id-" name="id-antena">
-            <div class="form-group">
-                <label for="antena">Nome:</label><br>
-                <input type="text" class="form-control" id="antena" name="antena" placeholder="Digite o nome da antena" required><br>
-            </div>            
-            <div class="text-right">
-                <button type="button" class="button button-secondary" data-dismiss="modal">Fechar</button>
-                <button type="submit" class="button" id="btn-submit">Salvar</button>
-            </div>
-            </form>
-        </div>
-        
-        <br>
-        <br>
-        <div class="table">
-            <div class="row header">
-                <div class="cell fixed">Antenas</div>
-            </div>
-            
-            {% for antena in antenas %}       
-            <div class="row">
-                <div class="cell fixed">{{ antena.nome }}</div>
-                <div class="cell fixed">
-                    <button type="button" class="button button-small" data-toggle="modal" data-target="#antena-modal" data-id="{{ antena.id }}" data-nome="{{ antena.nome }}">Editar</button>
+                <input type="hidden" id="id-antena" name="id-antena">
+                <div class="form-group">
+                    <label for="antena">Nome:</label><br>
+                    <input type="text" class="form-control" id="antena" name="antena" placeholder="Digite o nome da antena" required><br>
+                </div>            
+                <div class="text-right">
+                    <button type="button" class="button button-secondary" data-dismiss="modal">Fechar</button>
+                    <button type="submit" class="button" id="btn-submit">Salvar</button>
                 </div>
-            </div>
-            {% endfor %}
+            </form>
         </div>
     </div>
 </div>
 
-<!-- Modal -->
-<div id="satelite-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <button type="button" class="modal-close" data-dismiss="modal" aria-label="Fechar">
-                <span aria-hidden="true">&times;</span>
-            </button>
-            <span class="modal-title" id="sateliteModalLabel">Cadastro</span>
-        </div>
-        <div class="modal-body">
-            <form action="{{ url_for('dartcom_settings')}}" method="post" autocomplete="off"> 
-            <input type="hidden" id="id-" name="id-satelite">
-            <div class="form-check">
-                <label class="form-check-label" for="antena">Antena</label><br>
-                <select class="form-control" id="antena" name="antena">
-                    {% for antena in antenas %} 
-                        <option value="{{ antena.id }}">{{antena.nome}}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="satelite">Nome:</label><br>
-                <input type="text" class="form-control" id="satelite" name="satelite" placeholder="Digite o nome" required><br>
-            </div>
-            <div class="form-group">
-                <label for="sensor">Sensor:</label><br>
-                <input type="text" class="form-control" id="sensor" name="sensor" placeholder="Digite o sensor" required><br>
-            </div>
-            <div class="form-group">
-                <label for="data-type">Tipo de dado:</label><br>
-                <input type="text" class="form-control" id="data-type" name="data-type" placeholder="Digite o tipo de dado" required><br>
-            </div>
-            <div class="form-group">
-                <label for="satelite-path">Pasta destino:</label><br>
-                <input type="text" class="form-control" id="satelite-path" name="satelite-path" placeholder="Digite a pasta destino" required><br>
-            </div>
-            <div class="form-group">
-                <label for="template-name">Nome modelo:</label><br>
-                <input type="text" class="form-control" id="template-name" name="template-name" placeholder="Digite o nome modelo" required><br>
-            </div>
-            <div class="form-group">
-                <label for="command">Comando:</label><br>
-                <input type="text" class="form-control" id="command" name="command" placeholder="Digite o comando" required><br>
-            </div>
-            <br>
-            <div class="form-check" id="ativo-group">
-                <input type="checkbox" class="form-check-input" id="is-compressed" name="is-compressed">
-                <label class="form-check-label" for="is-compressed">Compactação</label><br>
-            </div>
-            <div class="form-check" id="ativo-group">
-                <input type="checkbox" class="form-check-input" id="epsl0" name="epsl0">
-                <label class="form-check-label" for="epsl0">EPSL0</label><br>
-            </div>
-            <br>
-            <div class="form-group">
-                <label for="epsl0-template">EPSL0 modelo:</label><br>
-                <input type="text" class="form-control" id="epsl0-template" name="epsl0-template" placeholder="Digite o EPSL0 modelo" required><br>
-            </div>
-            <div class="form-group">
-                <label for="template-path-origin-scp">Pasta SCP Modelo:</label><br>
-                <input type="text" class="form-control" id="template-path-origin-scp" name="template-path-origin-scp" placeholder="Digite a pasta SCP modelo" required><br>
-            </div>
-            <div class="text-right">
-                <button type="button" class="button button-secondary" data-dismiss="modal">Fechar</button>
-                <button type="submit" class="button" id="btn-submit">Salvar</button>
-            </div>
-            </form>
-        </div>    
-    </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 <script>
-    $('#user-modal').on('show.bs.modal', function (event) {
-        var button = $(event.relatedTarget); // Botão que acionou o modal
-        var usuario = button.data('id'); // Extrai a informação dos atributos de dados
-        if (usuario) {
-            var nome = button.data('nome');
-            var email = button.data('email');
-            var empresa = button.data('empresa');
-            var perfil = button.data('perfil');
-            var ativo = button.data('ativo');
-            var usuario = button.data('id');
-            // EDITAR
-            $("#userModalLabel").text("Editar");
-            $("#ativo-group").show();
-            $("#id-usuario").val(usuario)
-            $("#nome").val(nome)
-            $("#email").val(email)
-            $("#empresa").val(empresa)
-            $("#perfil").val(perfil)
-            $("#ativo").prop('checked',ativo)
-        } else {
-            // CADASTRAR
-            $("#userModalLabel").text("Cadastrar");
-            $("#ativo-group").hide();
-            $("#senha-group").show();
-            $("#id-usuario").val('')
-            $("#nome").val('')
-            $("#email").val('')
-            $("#empresa").val('')
-            $("#perfil").val('visitante')
-            $("#ativo").prop('checked',false)
-        }
-    });
+// Modal de edição Antenas
+$('#form-antena-modal').on('show.bs.modal', function (event) {
+    var button = $(event.relatedTarget); 
+    var antenaId = button.data('id'); 
+    var antenaNome = button.data('nome'); 
+
+    if (antenaId) {
+        // Modo de edição
+        $("#antenasModalLabel").text("Editar Antena"); 
+        $("#id-antena").val(antenaId);
+        $("#antena").val(antenaNome); 
+    } else {
+        // Modo de cadastro
+        $("#antenasModalLabel").text("Cadastrar Nova Antena"); 
+        $("#id-antena").val(''); 
+        $("#antena").val(''); 
+    }
+});
+
+$('#satelite-modal').on('show.bs.modal', function (event) {
+    var button = $(event.relatedTarget); 
+
+    var sateliteId = button.data('idsatelite'); 
+    var antena = button.data('antena'); 
+    var satelite = button.data('satelite'); 
+    var sensor = button.data('sensor'); 
+    var dataType = button.data('datatype'); 
+    var satelitePath = button.data('satelitepath'); 
+    var templateName = button.data('templatename'); 
+    var command = button.data('command'); 
+    var isCompressed = button.data('iscompressed'); 
+    var epsl0 = button.data('epsl0'); 
+    var epsl0Template = button.data('epsl0template'); 
+    var templatePathOriginScp = button.data('templatepathoriginscp'); 
+
+    if (sateliteId) {
+        // Modo de edição
+        $("#sateliteModalLabel").text("Editar Satélite"); 
+        $("#id-satelite").val(sateliteId);
+        $("#antena").val(antena);
+        $("#satelite").val(satelite);
+        $("#sensor").val(sensor);
+        $("#data-type").val(dataType);
+        $("#satelite-path").val(satelitePath);
+        $("#template-name").val(templateName);
+        $("#command").val(command);
+        $("#is-compressed").prop('checked',isCompressed);  
+        $("#epsl0").prop('checked',epsl0);  
+        $("#epsl0-template").val(epsl0Template);
+        $("#template-path-origin-scp").val(templatePathOriginScp);
+    } else {
+        // Modo de cadastro
+        $("#sateliteModalLabel").text("Cadastrar Novo Satélite"); 
+        $("#id-satelite").val('');
+        $("#antena").val('');
+        $("#satelite").val('');
+        $("#sensor").val('');
+        $("#data-type").val('');
+        $("#satelite-path").val('');
+        $("#template-name").val('');
+        $("#command").val('');
+        $("#is-compressed").prop('checked', false);  
+        $("#epsl0").prop('checked', false); 
+        $("#epsl0-template").val('');
+        $("#template-path-origin-scp").val('');
+    }
+});
+
 </script>
 {% endblock%}

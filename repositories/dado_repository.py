@@ -853,15 +853,16 @@ class DadoRepository:
     def get_dartcom_satelites(self):
         try:
             cursor = self.db.cursor()
-            cursor.execute('select id_dartcom_satelite,id_dartcom_antena,nome,sensor,data_type,satelite_path,template_name,command,is_compressed,is_epsl0,epsl0_template from dartcom_satelite order by nome')
+            cursor.execute('select s.id_dartcom_satelite, s.id_dartcom_antena, s.nome, s.sensor, s.data_type, s.satelite_path, s.template_name, s.command, s.is_compressed, s.is_epsl0, s.epsl0_template, s.template_path_origin_scp, a.nome from dartcom_satelite s join dartcom_antena a on s.id_dartcom_antena = a.id_dartcom_antena order by a.nome;')
             results = cursor.fetchall()
             cursor.close()
             self.db.commit()
-            satelites:list[DartcomSateliteModel] = []
+            # satelites:list[DartcomSateliteModel] = []
+            satelites = []
             for result in results:  
-                satelite = DartcomSateliteModel(id_dartcom_satelite=result[0],id_dartcom_antena=result[1],nome=result[2],sensor=result[3],data_type=result[4],satelite_path=result[5],template_name=result[6],command=result[7],is_compressed=result[8],is_epsl0=result[9],epsl0_template=result[10])
-            
-                satelites.append(satelite)
+                satelite = DartcomSateliteModel(id=result[0], id_dartcom_antena=result[1], nome=result[2], sensor=result[3], data_type=result[4], satelite_path=result[5], template_name=result[6], command=result[7], is_compressed=result[8], is_epsl0=result[9], epsl0_template=result[10], template_path_origin_scp=result[11])
+                satelites.append({'satelite': satelite, 'antena': result[12].upper()})
+        
             return satelites, None
         except Exception as e:
             print(e)
@@ -983,3 +984,25 @@ class DadoRepository:
             print(e)
             return e
 
+    def insert_satelite(self, satelite):
+        try:
+            cursor = self.db.cursor()
+            cursor.execute('insert into dartcom_satelite(id_dartcom_antena,nome,sensor,data_type,satelite_path,template_name,command,is_compressed,is_epsl0,epsl0_template,template_path_origin_scp) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',(satelite.id_dartcom_antena,satelite.nome,satelite.sensor,satelite.data_type,satelite.satelite_path,satelite.template_name,satelite.command,satelite.is_compressed,satelite.is_epsl0,satelite.epsl0_template,satelite.template_path_origin_scp))
+            self.db.commit()            
+            cursor.close()
+            return None, None
+
+        except Exception as e:
+            print(e)
+            return None, e
+        
+    def update_satelite(self, id, satelite):
+        try:
+            cursor = self.db.cursor()
+            cursor.execute('update dartcom_satelite set id_dartcom_antena=%s, nome=%s, sensor=%s, data_type=%s, satelite_path=%s, template_name=%s, command=%s, is_compressed=%s, is_epsl0=%s, epsl0_template=%s, template_path_origin_scp=%s where id_dartcom_satelite=%s',(satelite.id_dartcom_antena,satelite.nome,satelite.sensor,satelite.data_type,satelite.satelite_path,satelite.template_name,satelite.command,satelite.is_compressed,satelite.is_epsl0,satelite.epsl0_template,satelite.template_path_origin_scp, id))
+            self.db.commit()            
+            cursor.close()
+            return None
+        except Exception as e:            
+            print(e)
+            return e
