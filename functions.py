@@ -130,11 +130,20 @@ def background_process_dartcom():
 
     global dartcom_list
     dartcom_list = []
+    result_dartcom = []
 
     # lista de dados para retentar
     dartcom_retries = search_dartcom_retries()
     # lista de diretorios dartcom na ampare
     result_dartcom, dartcom_error = list_search_dartcom(fdt_destiny_dartcom)
+    print('lista de resultados:')
+    print(result_dartcom)
+
+    # ----------------------------------------------------------------------------------------------------------------- #
+    # PAREI AQUI EM 30/08/24, DAR CONTINUIDADE...
+    # A LISTA ACIMA ESTÁ RETORNANDO VAZIA
+    # ----------------------------------------------------------------------------------------------------------------- #
+
     if dartcom_error:
         send_email('Falha ao buscar dados da antenas', f'Favor verificar o ocorrido.\n\n{dartcom_error}', True)
         return
@@ -414,7 +423,6 @@ def dartcom_compress(data, path, is_epsl0, epsl0_path_origin):
         compress_status = status_error        
         return file_compress, compress_status, compress_end_datetime, filesize, e  
 
-
 # dados sensoriamento
 def search_files_md5():
     if is_process_running(fdt_destiny_all):
@@ -422,8 +430,8 @@ def search_files_md5():
         return True
     else:
         fdt_cmd = 'sudo -u transfcba java -jar {} -p {} -P 24 -pull -r -c {} -d {} {}'.format(fdt_service,fdt_port,fdt_server,fdt_destiny_all,fdt_origin_md5)
-        fdt_process = subprocess.Popen(fdt_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = fdt_process.communicate()
+        # fdt_process = subprocess.Popen(fdt_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # output, error = fdt_process.communicate()
         return False
 
 #dados meteorologicos
@@ -432,9 +440,13 @@ def search_files_dartcom_cba():
         print("O processo já está em execução.")
         return True
     else:
-        fdt_cmd = 'sudo -u transfcba java -jar {} -p {} -P 24 -pull -r -c {} -d {} {}'.format(fdt_service,fdt_port_dartcom,fdt_server,fdt_destiny_dartcom,fdt_origin_dartcom)
-        fdt_process = subprocess.Popen(fdt_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = fdt_process.communicate()
+        print('executando fdt')
+        try:
+            fdt_cmd = 'sudo -u transfcba java -jar {} -p {} -P 24 -pull -r -c {} -d {} {}'.format(fdt_service,fdt_port_dartcom,fdt_server,fdt_destiny_dartcom,fdt_origin_dartcom)
+            fdt_process = subprocess.Popen(fdt_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            output, error = fdt_process.communicate()
+        except Exception as e:
+            print('erro no fdt: ', e)
         return False
     
 def search_files_dartcom_cp():
@@ -456,8 +468,10 @@ def search_files_dartcom_cp():
                 # se satelite possui path scp realiza a transferencia via scp
                 if satelite.get_template_path_origin_scp:
                     date_now = get_date_str()
-                    template_path_origin_scp = Template(template=satelite.get_template_path_origin_scp)
+                    # template_path_origin_scp = Template(template=satelite.get_template_path_origin_scp)
+                    template_path_origin_scp = Template(template=str(satelite.get_template_path_origin_scp))
                     path_origin_scp = template_path_origin_scp.substitute(date=date_now)
+                    print('template ', template_path_origin_scp)
                     scp_cmd = 'scp -r {}@{}:{} {}'.format(scp_user, scp_ip, path_origin_scp, satelite.satelite_path)
                     scp_process = subprocess.Popen(scp_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     output, error = scp_process.communicate()
@@ -504,30 +518,46 @@ def list_search_dartcom(path):
             antenas, error_db = dado_repository.get_dartcom_antena()
             if error_db:
                 send_email('Falha ao listar antenas', f'Favor verificar o ocorrido.\n\n{error_db}', True)
-                return
+                return None, error_db
         
             for antena in antenas:
-                satelites:List[DartcomSateliteModel] = dado_repository.get_dartcom_templates(antena.id)
-                for satelite in satelites:
+                satelites: List[DartcomSateliteModel]
+                satelites, error_db = dado_repository.get_dartcom_templates(antena.id)
+                if error_db:
+                    print(f"Erro ao obter templates de satélites: {error_db}")
+                    continue
+
+                for satelite in satelites:                    
                     dates_dirs = os.listdir(satelite.satelite_path)
                     for date_dir in dates_dirs:
                         datas_dirs = os.listdir(f'{satelite.satelite_path}/{date_dir}')
                         for data_dir in datas_dirs:
-                            missao = ''
                             files_path = f'{satelite.satelite_path}/{date_dir}/{data_dir}'
+                            print(f"Verificando diretório: {files_path}")
 
                             date_now = datetime.now()
                             date_modified = datetime.fromtimestamp(os.path.getmtime(files_path))
 
                             diff = date_now - date_modified
+                            missao = ''
+                            error = ''
                             if diff >= timedelta(minutes=dartcom_time_min):
                                 if satelite.command:
-                                    missao = define_missao(files_path, satelite.command)
-                                dartcom_name = define_dartcom_name(data_dir, satelite, missao)
-                                list_dartcom.append((dartcom_name, missao, files_path, satelite, date_modified, date_dir))
-        return list_dartcom, None
+                                    missao, error = define_missao(files_path, satelite.command)
+                            
+                                if not error:
+                                    dartcom_name = define_dartcom_name(data_dir, satelite, missao)
+                                    if dartcom_name:
+                                        print('Nome Dartcom definido:', dartcom_name)
+                                        list_dartcom.append((dartcom_name, missao, files_path, satelite, date_modified, date_dir))
+                                    else:
+                                        print(f"Nome do Dartcom vazio para data_dir: {data_dir}")
+                                else:
+                                    print('Erro na definição da missão:', error)
+                            
+            return list_dartcom, None
     except Exception as e:
-        print(e)
+        print('Erro:', e)
         return None, e
     
 def get_new_files_dartcom(lista):
@@ -549,36 +579,42 @@ def get_new_files_dartcom(lista):
     return new_dartcoms
 
 def define_dartcom_name(data_dir, satelite, missao):
-    datetime = data_dir.split(" ")
-    date = datetime[0].replace("-", "_")
-    time = datetime[1].replace("-", "_")
-
-    name_template = Template(template=satelite.template_name)
-    name = name_template.substitute(date=date, time=time, missao=missao)
-
-    return name
-
+    try:
+        datetime = data_dir.split(" ")
+        date = datetime[0].replace("-", "_")
+        time = datetime[1].replace("-", "_")
+        name_template = Template(satelite.template_name)
+        name = name_template.substitute(missao=missao, date=date, time=time)
+        if not name:
+            print(f"Warning: Nome gerado está vazio para o data_dir: {data_dir}")
+        return name
+    except Exception as e:
+        print(f"Erro ao definir o nome do Dartcom: {e}")
+        return None
+    
 def define_missao(path, command):
-    infos = glob.glob(os.path.join(path, '**', '*.info'), recursive=False)
+    infos = glob.glob(os.path.join(path, '*.info'), recursive=False)
     error = ''
     if infos:
-        info_path = path+'/'+infos[0]
-        command_template = Template(template=command)
-        command = command_template.substitute(file=info_path)
-        info_process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error_command = info_process.communicate()
-        missao = output.decode()
-        error = error_command.decode()
-
-        # verifica se é número ou letra
-        if missao.isnumeric():
-            missao = '_'+missao
-        else:
-            missao = '-'+missao
-
-        return missao, error
+        info_path = infos[0]
+        command_template = Template(command)
+        command = command_template.substitute(file=f'"{info_path}"')
+        try:
+            info_process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            output, error_command = info_process.communicate()
+            missao = output.decode().strip()
+            error = error_command.decode()
+            if not missao:
+                print(f"Warning: Missão está vazia para o caminho: {info_path}")
+            return missao, error
+        except Exception as e:
+            error = str(e)
+            missao = None
+            print(f"Erro ao executar comando: {error}")
+            return missao, error
     else:
         error = 'file not found'
+        print(error)
         return None, error
 
 def search_retries():
