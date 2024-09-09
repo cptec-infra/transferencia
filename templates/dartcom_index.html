@@ -61,7 +61,7 @@
                 </div>
             
                 {% for dartcom in dartcoms %}
-                <div class="row click dado-row" id="{{ dado.id }}">
+                <div class="row click dado-row" id="{{ dartcom.id }}">
                     <div class="cell name">{{ dartcom.nome }}</div>
                     <div class="cell fixed">
                         <div class="status {{ dartcom.compressed_status|class_status }}">
@@ -75,7 +75,7 @@
                         </div>
                     </div>
                     <div class="cell fixed">{{ '-' if not dartcom.storing_end_datetime else dartcom.storing_end_datetime.strftime("%d/%m/%Y") }}</div>
-                    <div class="cell fixed">{{ '-' if not dartcom.storing_time else dartcom.storing_time }}</div>
+                    <div class="cell fixed">{{ '0:00:00' if not dartcom.storing_time else dartcom.storing_time }}</div>
                 </div>
                 {% endfor %}
 

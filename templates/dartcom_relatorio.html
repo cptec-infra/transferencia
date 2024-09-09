@@ -10,7 +10,7 @@
     <div class="info-transfer-list">
         <div class="dados">
             <div class="text">Busca</div>
-            <form action="{{ url_for('relatorio')}}" method="post" autocomplete="off"> 
+            <form action="{{ url_for('dartcom_relatorio')}}" method="post" autocomplete="off"> 
                 <span>
                     Ínicio:             
                     <input type="date" name="date-start" class="textbox form-group" id="date-start" value="{{ date_start }}" required>
@@ -47,43 +47,29 @@
             <div class="table">
                 <div class="row header">
                     <div class="cell name">Nome</div>
-                    <div class="cell fixed">Download</div>
-                    <div class="cell fixed">Data</div>
-                    <div class="cell fixed">Tempo</div>
-                    <div class="cell fixed">MD5-CP</div>
-                    <div class="cell fixed">Válido</div>
+                    <div class="cell fixed">Compactar</div>
+                    <div class="cell fixed">Data</div>                    
                     <div class="cell fixed">Armazenamento</div>
                     <div class="cell fixed">Data</div>
                     <div class="cell fixed">Tempo</div>
                 </div>
             
-                {% for dado in dados %}
-                <div class="row click dado-row" id="{{ dado.id }}">
-                    <div class="cell name">{{ dado.nome }}</div>
+                {% for dartcom in dartcoms %}
+                <div class="row click dado-row" id="{{ dartcom.id }}">
+                    <div class="cell name">{{ dartcom.nome }}</div>
                     <div class="cell fixed">
-                        <div class="status {{ dado.download_status|class_status }}">
-                            {{ dado.download_status if dado.download_status else '-' }}
+                        <div class="status {{ dartcom.compressed_status|class_status }}">
+                            {{ dartcom.compressed_status if dartcom.compressed_status else 'Aguardando' }}
                         </div>
                     </div>
-                    <div class="cell fixed">{{ '-' if not dado.download_end_datetime else dado.download_end_datetime.strftime("%d/%m/%Y") }}</div>
-                    <div class="cell fixed">{{ dado.download_time }}</div>
+                    <div class="cell fixed">{{ '-' if not dartcom.compressed_end_datetime else dartcom.compressed_end_datetime.strftime("%d/%m/%Y") }}</div>
                     <div class="cell fixed">
-                        <div class="status {{ dado.md5_cp_status|class_status }}">
-                            {{ dado.md5_cp_status if dado.md5_cp_status else 'Aguardando' }}
+                        <div class="status {{ dartcom.storing_status|class_status }}">
+                            {{ dartcom.storing_status if dartcom.storing_status else 'Aguardando' }}
                         </div>
                     </div>
-                    <div class="cell fixed">
-                        <div class="status {{ dado.md5_validated|class_status }}">
-                            {{ 'Sim' if dado.md5_validated else ('Aguardando' if dado.md5_validated == None else 'Não') }}
-                        </div>
-                    </div>
-                    <div class="cell fixed">
-                        <div class="status {{ dado.storing_status|class_status }}">
-                            {{ dado.storing_status if dado.storing_status else 'Aguardando' }}
-                        </div>
-                    </div>
-                    <div class="cell fixed">{{ '-' if not dado.storing_end_datetime else dado.storing_end_datetime.strftime("%d/%m/%Y") }}</div>
-                    <div class="cell fixed">{{ '-' if not dado.storing_time else dado.storing_time }}</div>
+                    <div class="cell fixed">{{ '-' if not dartcom.storing_end_datetime else dartcom.storing_end_datetime.strftime("%d/%m/%Y") }}</div>
+                    <div class="cell fixed">{{ '0:00:00' if not dartcom.storing_time else dartcom.storing_time }}</div>
                 </div>
                 {% endfor %}
             </div>
@@ -139,7 +125,7 @@
     $(document).ready(function() {
         $('.click').on('click', function() {
             var id = $(this).attr('id');
-            window.location.href = 'dado/' + id;
+            window.location.href = 'dartcom/' + id;
         });
 
         var modalElement = document.getElementById('modal');

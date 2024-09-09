@@ -455,7 +455,7 @@ class DartcomAntenaModel:
         return self.nome
     
 class DartcomSateliteModel:
-    def __init__(self, id, id_dartcom_antena, nome, sensor, data_type, satelite_path, template_name, command, is_compressed, is_epsl0, epsl0_template, template_path_origin_scp) -> None:
+    def __init__(self, id, id_dartcom_antena, nome, sensor, data_type, satelite_path, template_name, command, is_compressed, is_epsl0, epsl0_template) -> None:
         self.id = id
         self.id_dartcom_antena = id_dartcom_antena
         self.nome = nome
@@ -467,7 +467,6 @@ class DartcomSateliteModel:
         self.is_compressed = is_compressed
         self.is_epsl0 = is_epsl0
         self.epsl0_template = epsl0_template
-        self.template_path_origin_scp = template_path_origin_scp
 
     def get_id(self):
         return self.id
@@ -534,12 +533,6 @@ class DartcomSateliteModel:
 
     def set_epsl0_template(self, epsl0_template):
         self.epsl0_template = epsl0_template
-
-    def get_template_path_origin_scp(self):
-        return self.template_path_origin_scp
-    
-    def set_template_path_origin_scp(self, value):
-        self.template_path_origin_scp = value
 
     def __str__(self) -> str:
         return self.nome

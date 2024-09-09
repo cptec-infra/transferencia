@@ -41,6 +41,7 @@
             <br>Início: {{ '-' if not dartcom.storing_start_datetime else dartcom.storing_start_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
             <br>Término: {{ '-' if not dartcom.storing_end_datetime else dartcom.storing_end_datetime.strftime("%d/%m/%Y %H:%M:%S") }}
             <br>Tempo: {{ '-' if not dartcom.storing_time else dartcom.storing_time }}
+            <br>Tamanho: {{ '-' if not dartcom.filesize else dartcom.filesize|size_to_human_view }}
         </div>
     </div>
     </div>

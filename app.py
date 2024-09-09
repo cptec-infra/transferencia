@@ -23,7 +23,7 @@ app.secret_key = config.get('FLASK', 'flask_key')
 fdt_server = config.get('FDT', 'fdt_server')
 fdt_port = config.get('FDT', 'fdt_port')
 
-last_timeout = None
+last_check_fdt = None
 
 #def background_thread():
 #    with app.app_context():
@@ -98,14 +98,14 @@ def dartcom():
 def dartcom_dado(id_dartcom):
     if is_logado():
         dado_repository = DadoRepository()
-        id_dartcom, error_db = dado_repository.get_dartcom(id_dartcom=id_dartcom)
+        dartcom, error_db = dado_repository.get_dartcom(id_dartcom=id_dartcom)
         if error_db:
             send_email(subject='Falha na rota dartcom', body=f'Favor verificar o ocorrido.\n\n{error_db}', is_adm=True)
             return render_template('dado_dartcom.html', dartcom = dartcom, msg = 'Erro no banco de dados')
         
         historico, error_db = dado_repository.get_dartcom_history(id_dartcom=id_dartcom)
         if error_db:
-            send_email(subject='Falha na rota dartcom', body=f'Favor verificar o ocorrido.\n\n{error_db}', is_adm=True)
+            send_email(subject='Falha na rota dartcom historico', body=f'Favor verificar o ocorrido.\n\n{error_db}', is_adm=True)
             return render_template('dado_dartcom.html', msg = 'Erro no banco de dados')
         
         return render_template('dado_dartcom.html', dartcom = dartcom, historico = historico)
@@ -208,9 +208,8 @@ def dartcom_settings():
                     is_epsl0 = 1 if form.get('epsl0') == 'on' else 0
 
                     epsl0_template = form['epsl0-template']
-                    template_path_origin_scp = form['template-path-origin-scp']
 
-                    satelite = DartcomSateliteModel(id=id, id_dartcom_antena=id_dartcom_antena, nome=nome, sensor=sensor, data_type=data_type, satelite_path=satelite_path, template_name=template_name, command=command, is_compressed=is_compressed, is_epsl0=is_epsl0, epsl0_template=epsl0_template, template_path_origin_scp=template_path_origin_scp)
+                    satelite = DartcomSateliteModel(id=id, id_dartcom_antena=id_dartcom_antena, nome=nome, sensor=sensor, data_type=data_type, satelite_path=satelite_path, template_name=template_name, command=command, is_compressed=is_compressed, is_epsl0=is_epsl0, epsl0_template=epsl0_template)
 
                     if id:
                         # editar
@@ -423,13 +422,47 @@ def relatorio(date_start=None, date_end=None, daily_volume=None, grafico_volume_
                 grafico_volume_json, volume_fig = create_graph_volume(volume_for_date)
                 grafico_quantidade_json, quantidade_fig = create_graph_quantity(quantidade_for_date)
                 grafico_satellite_json, satellite_fig = create_graph_satellite(satellite_for_date)    
-                grafico_tempo_json, tempo_fig = create_graph_time(tempo_for_date_downlaod, tempo_for_date_armazenamento)    
+                grafico_tempo_json, tempo_fig = create_graph_time(tempo_for_date_downlaod, tempo_for_date_armazenamento, 'Download')    
 
                 if request.args.get('download'):
                     return create_pdf(dados=dados, daily_volume=daily_volume, date_start=date_start, date_end=date_end,volume_fig=volume_fig,quantidade_fig=quantidade_fig,satellite_fig=satellite_fig, tempo_fig=tempo_fig)                         
                           
-
         return render_template('relatorio.html', dados=dados, daily_volume=daily_volume, date_start=date_start, date_end=date_end, grafico_volume=grafico_volume_json, grafico_quantidade=grafico_quantidade_json, grafico_satellite=grafico_satellite_json, grafico_tempo=grafico_tempo_json, msg=msg)
+    else:
+        return redirect(url_for('login'))
+    
+@app.route('/dartcom/relatorio', methods=['GET', 'POST'])
+def dartcom_relatorio(date_start=None, date_end=None, daily_volume=None, grafico_volume_json = None, grafico_quantidade_json = None, grafico_satellite_json = None, grafico_tempo_json = None,  msg = None, dartcoms=[]):
+    if is_logado():
+        date_start = request.args.get('start')
+        date_end = request.args.get('end')
+        
+        if request.method == 'POST':
+            date_start = request.form['date-start']
+            date_end = request.form['date-end']
+
+        if date_start or date_end:
+            dado_repository = DadoRepository()
+            # ALTERAR
+            dartcoms, error_db, volume_for_date, quantidade_for_date, satellite_for_date, tempo_for_date_downlaod, tempo_for_date_armazenamento = dado_repository.get_report_dartcom(date_start, date_end)
+            if error_db:
+                send_email(subject='Falha na rota /dartcom/relatorio', body=f'Favor verificar o ocorrido.\n\n{error_db}', is_adm=True)
+                msg = 'Erro no banco de dados'
+            else:
+                # ALTERAR
+                daily_volume = dado_repository.get_dartcom_daily_volume(date_start, date_end)
+                if volume_for_date is None:
+                    volume_for_date = []
+                grafico_volume_json, volume_fig = create_graph_volume(volume_for_date)
+                grafico_quantidade_json, quantidade_fig = create_graph_quantity(quantidade_for_date)
+                grafico_satellite_json, satellite_fig = create_graph_satellite(satellite_for_date)    
+                grafico_tempo_json, tempo_fig = create_graph_time(tempo_for_date_downlaod, tempo_for_date_armazenamento, 'Compactação')    
+
+                if request.args.get('download'):
+                    # ALTERAR
+                    return create_dartcom_pdf(dartcoms=dartcoms, daily_volume=daily_volume, date_start=date_start, date_end=date_end,volume_fig=volume_fig,quantidade_fig=quantidade_fig,satellite_fig=satellite_fig, tempo_fig=tempo_fig)                         
+                          
+        return render_template('dartcom_relatorio.html', dartcoms=dartcoms, daily_volume=daily_volume, date_start=date_start, date_end=date_end, grafico_volume=grafico_volume_json, grafico_quantidade=grafico_quantidade_json, grafico_satellite=grafico_satellite_json, grafico_tempo=grafico_tempo_json, msg=msg)
     else:
         return redirect(url_for('login'))
 
@@ -500,22 +533,22 @@ def create_graph_satellite(satellite_for_date):
 
     return grafico_json, fig
 
-def create_graph_time(time_for_date_download, tempo_for_date_armazenamento):
-    dates = [date for date, download in time_for_date_download]
-    downloads = [download.total_seconds() / 60 for date, download in time_for_date_download]
+def create_graph_time(time_for_date_processes, tempo_for_date_armazenamento, title_processes):
+    dates = [date for date, processes in time_for_date_processes]
+    processes = [processes.total_seconds() / 60 for date, processes in time_for_date_processes]
     armazenados = [armazenado.total_seconds() / 60 for date, armazenado in tempo_for_date_armazenamento]
 
 
     # Criar o objeto de gráfico de barras
     fig = go.Figure()
-    fig.add_trace(go.Bar(x=dates, y=downloads, name='Tempo de Download', hovertemplate='Download: %{y:.2f} minutos<extra></extra>', marker_color='#1f912e'))
+    fig.add_trace(go.Bar(x=dates, y=processes, name=f'Tempo de {title_processes}', hovertemplate=f'{title_processes}:'+'%{y:.2f} minutos<extra></extra>', marker_color='#1f912e'))
     fig.add_trace(go.Bar(x=dates, y=armazenados, name='Tempo de Armazenamento', hovertemplate='Armazenamento: %{y:.2f} minutos<extra></extra>', marker_color='#d62728'))
 
     # Atualizar layout do gráfico
     fig.update_layout(
-        title='Tempo de download e armazenamento por dia',
+        title=f'Tempo de {title_processes} e Armazenamento por dia',
         xaxis=dict(title='Data', tickangle=-30, tickformat='%d/%m', dtick='D1'),
-        yaxis=dict(title='Tempo (minutos)', range=[0, max(max(downloads), max(armazenados)) + 10]),
+        yaxis=dict(title='Tempo (minutos)', range=[0, max(max(processes), max(armazenados)) + 10]),
         barmode='group',  
         bargap=0.6, 
         legend=dict(
@@ -551,30 +584,27 @@ def settings():
 
 @app.route('/check_service_connection')
 def check_service_connection():
+    print('check_service_connection')
+    global last_check_fdt
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(5)
-        sock.connect((fdt_server, int(fdt_port)))
-        sock.close()
+        is_first_check = False
+        if not last_check_fdt:
+            is_first_check = True
+            last_check_fdt = datetime.now()
+        # calcula a diferença entre a data atual e o último check
+        check_diff = datetime.now() - last_check_fdt
+        # se a diferença for pelo menos 5 minutos
+        if check_diff >= timedelta(minutes=5) or is_first_check:
+            last_check_fdt = datetime.now()
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(5)
+            sock.connect((fdt_server, int(fdt_port)))
+            sock.close()
 
         return jsonify({'status': 'success'})
     except socket.error as e:
         error_message = str(e)
-
-        # verifica se last_timeout é None, se True define com data atual (now)
-        is_first_timeout = False
-        if not last_timeout:
-            is_first_timeout = True
-            last_timeout = datetime.now()
-        # calcula a diferença entre a data atual e o último timeout
-        timeout_diff = datetime.now() - last_timeout
-        # se a diferença for pelo menos 5 minutos
-        if timeout_diff >= timedelta(minutes=5) or is_first_timeout:
-            send_email('Erro na conexão com o servidor FDT', f'Ocorreu um erro na comunicação com o serviço FDT na CORCR - Cuiabá.\n\nInformativo do erro: {error_message}')
-        return jsonify({'status': 'error', 'message': error_message})
-    except Exception as e:
-        error_message = str(e)
-        send_email('Falha no processo de conexão com o servidor FDT', f'Ocorreu um erro na comunicação com o serviço FDT na CORCR - Cuiabá.\n\nInformativo do erro: {error_message}')
+        send_email('Erro na conexão com o servidor FDT', f'Ocorreu um erro na comunicação com o serviço FDT na CORCR - Cuiabá.\n\nInformativo do erro: {error_message}')
         return jsonify({'status': 'error', 'message': error_message})
     
 @app.template_filter('class_status')

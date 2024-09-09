@@ -43,8 +43,7 @@
                     data-command="{{satelite.satelite.command}}" 
                     data-isCompressed="{{satelite.satelite.is_compressed}}" 
                     data-epsl0="{{satelite.satelite.is_epsl0}}" 
-                    data-epsl0Template="{{satelite.satelite.epsl0_template}}" 
-                    data-templatePathOriginScp="{{satelite.satelite.template_path_origin_scp}}">Editar</button>
+                    data-epsl0Template="{{satelite.satelite.epsl0_template}}">Editar</button>
              </div>
         </div>
         {% endfor %}
@@ -107,10 +106,6 @@
                 <div class="form-group">
                     <label for="epsl0-template">Pasta EPSL0:</label><br>
                     <input type="text" class="form-control" id="epsl0-template" name="epsl0-template" placeholder="Digite o caminho do EPSL0"><br>
-                </div>
-                <div class="form-group">
-                    <label for="template-path-origin-scp">Pasta SCP:</label><br>
-                    <input type="text" class="form-control" id="template-path-origin-scp" name="template-path-origin-scp" placeholder="Digite o caminho via SCP"><br>
                 </div>
                 <div class="text-right">
                     <button type="button" class="button button-secondary" data-dismiss="modal">Fechar</button>
@@ -208,8 +203,7 @@ $('#satelite-modal').on('show.bs.modal', function (event) {
     var command = button.data('command'); 
     var isCompressed = button.data('iscompressed'); 
     var epsl0 = button.data('epsl0'); 
-    var epsl0Template = button.data('epsl0template'); 
-    var templatePathOriginScp = button.data('templatepathoriginscp'); 
+    var epsl0Template = button.data('epsl0template');
 
     if (sateliteId) {
         // Modo de edição
@@ -225,7 +219,6 @@ $('#satelite-modal').on('show.bs.modal', function (event) {
         $("#is-compressed").prop('checked',isCompressed);  
         $("#epsl0").prop('checked',epsl0);  
         $("#epsl0-template").val(epsl0Template);
-        $("#template-path-origin-scp").val(templatePathOriginScp);
     } else {
         // Modo de cadastro
         $("#sateliteModalLabel").text("Cadastrar Novo Satélite"); 
@@ -240,7 +233,6 @@ $('#satelite-modal').on('show.bs.modal', function (event) {
         $("#is-compressed").prop('checked', false);  
         $("#epsl0").prop('checked', false); 
         $("#epsl0-template").val('');
-        $("#template-path-origin-scp").val('');
     }
 });
 

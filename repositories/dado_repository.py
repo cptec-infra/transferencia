@@ -11,7 +11,7 @@ class DadoRepository:
         sat_partes = dado.split('_')
         name = sat_partes[0]
         missao = ''
-        if name == 'CBERS' or name == 'AMAZONIA':
+        if name == 'CBERS' or name == 'AMAZONIA' or name == 'NOAA':
             name = name + '_' + sat_partes[1]
         return name        
 
@@ -108,6 +108,92 @@ class DadoRepository:
         except Exception as e:
             print(e)
             return [], e, [], [], [], [], []    
+        
+    def get_report_dartcom(self, date_start = None, date_end = None):    
+        try:
+            cursor = self.db.cursor()
+            query = f"SELECT nome, modified_datetime, compressed_status, compressed_start_datetime, compressed_end_datetime, storing_status, storing_start_datetime, storing_end_datetime, filesize FROM dartcom WHERE date(storing_start_datetime) >= '{date_start}' and date(storing_start_datetime) <= '{date_end}' order by storing_start_datetime"
+            cursor.execute(query)
+            result = cursor.fetchall()
+            dartcoms = []
+            date_volume = {}
+            date_quantidade = {}
+            date_satellite = {}
+            date_tempo_compressed = {}
+            date_tempo_armazenado = {}
+
+            
+            for d in result:
+                date = d[6].date()  
+                volume_temp = d[8] if d[8] else 0
+                volume = volume_temp / (1024**3)
+                satellite = self.get_satellite_name(d[0])
+                
+                # Define o tempo do download
+                compressed_start_datetime=d[3]
+                compressed_end_datetime=d[4]
+                compressed_time = timedelta(0)
+
+                if compressed_start_datetime and compressed_end_datetime:
+                    compressed_time = compressed_end_datetime - compressed_start_datetime
+
+                # Define o tempo de armazenamento
+                storing_start_datetime=d[6]
+                storing_end_datetime=d[7]
+                storing_time = timedelta(0)
+
+                if storing_start_datetime and storing_end_datetime:
+                    storing_time = storing_end_datetime - storing_start_datetime
+                
+                if date in date_volume:
+                    date_volume[date] += volume
+                    date_quantidade[date] += 1
+                    date_tempo_compressed[date] += compressed_time
+                    
+                else:
+                    date_volume[date] = volume
+                    date_quantidade[date] = 1
+                    date_tempo_compressed[date] = compressed_time
+
+                if date in date_tempo_armazenado:
+                    date_tempo_armazenado[date] += storing_time
+                else:
+                    date_tempo_armazenado[date] = storing_time
+
+                if satellite in date_satellite:
+                    date_satellite[satellite] += 1
+                else:
+                    date_satellite[satellite] = 1                
+
+                dartcom = DartcomModel()
+                dartcom.set_nome(d[0])
+                dartcom.set_modified_datetime(d[1])
+                dartcom.set_compressed_status(d[2])
+                dartcom.set_compressed_start_datetime(d[3])
+                dartcom.set_compressed_end_datetime(d[4])
+                dartcom.set_storing_status(d[5])
+                dartcom.set_storing_start_datetime(d[6])
+                dartcom.set_storing_end_datetime(d[7])
+                dartcom.set_compressed_time(compressed_time)
+                dartcom.set_storing_time(storing_time)
+                dartcom.set_filesize(d[8])
+                dartcoms.append(dartcom)
+            
+            volume_for_date = [(date, volume) for date, volume in date_volume.items()]            
+            quantidade_for_date = [(date, quantidade) for date, quantidade in date_quantidade.items()]
+            tempo_for_date_compressed = [(date, compressed) for date, compressed in date_tempo_compressed.items()]
+            tempo_for_date_armazenamento = [(date, armazenamento) for date, armazenamento in date_tempo_armazenado.items()]
+
+            date_satellite = dict(sorted(date_satellite.items()))
+            satellite_for_date = [(date, sateliite) for date, sateliite in date_satellite.items()]
+
+            cursor.close()
+            self.db.commit()
+            return dartcoms, None, volume_for_date, quantidade_for_date, satellite_for_date, tempo_for_date_compressed, tempo_for_date_armazenamento
+
+        except Exception as e:
+            print(e)
+            return [], e, [], [], [], [], []
     
     def find_data(self, name):
         try:
@@ -553,6 +639,7 @@ class DadoRepository:
                 dartcom.set_retry_datetime(d[11])
                 dartcom.set_id_dartcom_satelite(d[12])
                 dartcom.set_date_path(d[13])
+                dartcom.set_missao(d[14])
                 dartcom.set_compressed_time(compressed_time)
                 dartcom.set_storing_time(storing_time)
                 return dartcom, None
@@ -565,8 +652,8 @@ class DadoRepository:
     def get_dartcom_history(self, id_dartcom):
         try:         
             cursor = self.db.cursor()
-            cursor.execute('select h.id_dartcom, h.nome, modified_datetime, compressed_status, compressed_start_datetime, compressed_end_datetime, storing_status, storing_start_datetime, storing_end_datetime, filesize, retry_user, retry_datetime, u.nome from dartcom_historico h left join usuario u on h.retry_user = u.id_usuario where h.id_dartcom=%s order by h.id_dartcom_historico desc',(id_dartcom))
-            result = cursor.fetchall
+            cursor.execute('select h.id_dartcom, h.nome, modified_datetime, compressed_status, compressed_start_datetime, compressed_end_datetime, storing_status, storing_start_datetime, storing_end_datetime, filesize, retry_user, retry_datetime, u.nome from dartcom_historico h left join usuario u on h.retry_user = u.id_usuario where h.nome=%s order by h.id_dartcom_historico desc',(id_dartcom))
+            result = cursor.fetchall()
             cursor.close()
             self.db.commit()
             history = []
@@ -608,7 +695,7 @@ class DadoRepository:
     def insert_dartcom_historico(self, id_dartcom):   
         try:
             cursor = self.db.cursor()
-            cursor.execute('insert into dartcom_historico (id_dartcom,nome,modified_datetime,compressed_status,compressed_start_datetime,compressed_end_datetime,storing_status,storing_start_datetime,storing_end_datetime,filesize,retry_user,retry_datetime,id_dartcom_satelite,date_path) select * from dartcom where id_dartcom=%s', (id_dartcom))
+            cursor.execute('insert into dartcom_historico (id_dartcom,nome,modified_datetime,compressed_status,compressed_start_datetime,compressed_end_datetime,storing_status,storing_start_datetime,storing_end_datetime,filesize,retry_user,retry_datetime,id_dartcom_satelite,date_path,missao) select * from dartcom where id_dartcom=%s', (id_dartcom))
             self.db.commit()
             cursor.close()
             #id do dado e error_db
@@ -657,7 +744,7 @@ class DadoRepository:
     def update_dartcom_vcdu(self, dartcom: DartcomModel):
         try:
             cursor = self.db.cursor()
-            cursor.execute('update dartcom set compressed_status=%s, download_start_datetime=%s, filesize=%s where id_dartcom=%s', (dartcom.compressed_status, dartcom.compressed_start_datetime, dartcom.filesize, dartcom.id))
+            cursor.execute('update dartcom set compressed_status=%s, compressed_start_datetime=%s, filesize=%s where id_dartcom=%s', (dartcom.compressed_status, dartcom.compressed_start_datetime, dartcom.filesize, dartcom.id))
             self.db.commit()
             cursor.close()
             return False
@@ -853,15 +940,15 @@ class DadoRepository:
     def get_dartcom_satelites(self):
         try:
             cursor = self.db.cursor()
-            cursor.execute('select s.id_dartcom_satelite, s.id_dartcom_antena, s.nome, s.sensor, s.data_type, s.satelite_path, s.template_name, s.command, s.is_compressed, s.is_epsl0, s.epsl0_template, s.template_path_origin_scp, a.nome from dartcom_satelite s join dartcom_antena a on s.id_dartcom_antena = a.id_dartcom_antena order by a.nome;')
+            cursor.execute('select s.id_dartcom_satelite, s.id_dartcom_antena, s.nome, s.sensor, s.data_type, s.satelite_path, s.template_name, s.command, s.is_compressed, s.is_epsl0, s.epsl0_template, a.nome from dartcom_satelite s join dartcom_antena a on s.id_dartcom_antena = a.id_dartcom_antena order by a.nome;')
             results = cursor.fetchall()
             cursor.close()
             self.db.commit()
             # satelites:list[DartcomSateliteModel] = []
             satelites = []
             for result in results:  
-                satelite = DartcomSateliteModel(id=result[0], id_dartcom_antena=result[1], nome=result[2], sensor=result[3], data_type=result[4], satelite_path=result[5], template_name=result[6], command=result[7], is_compressed=result[8], is_epsl0=result[9], epsl0_template=result[10], template_path_origin_scp=result[11])
-                satelites.append({'satelite': satelite, 'antena': result[12].upper()})
+                satelite = DartcomSateliteModel(id=result[0], id_dartcom_antena=result[1], nome=result[2], sensor=result[3], data_type=result[4], satelite_path=result[5], template_name=result[6], command=result[7], is_compressed=result[8], is_epsl0=result[9], epsl0_template=result[10])
+                satelites.append({'satelite': satelite, 'antena': result[11].upper()})
         
             return satelites, None
         except Exception as e:
@@ -871,7 +958,7 @@ class DadoRepository:
     def get_retries_dartcom(self):
         try:
             cursor = self.db.cursor()
-            cursor.execute('select dartcom.id_dartcom, dartcom.nome, modified_datetime, compressed_status, compressed_start_datetime, compressed_end_datetime, storing_status, storing_start_datetime, storing_end_datetime, retry_user, retry_datetime, error, id_dartcom_retry, filesize, dartcom.id_dartcom_satelite, date_path from dartcom left join dartcom_satelite on dartcom.id_dartcom_satelite = dartcom_satelite.id_dartcom_satelite join dartcom_retry on dartcom.id_dartcom = dartcom_retry.id_dartcom order by id_dartcom desc')
+            cursor.execute('select dartcom.id_dartcom, dartcom.nome, modified_datetime, compressed_status, compressed_start_datetime, compressed_end_datetime, storing_status, storing_start_datetime, storing_end_datetime, retry_user, retry_datetime, error, id_dartcom_retry, filesize, dartcom.id_dartcom_satelite, date_path, missao from dartcom left join dartcom_satelite on dartcom.id_dartcom_satelite = dartcom_satelite.id_dartcom_satelite join dartcom_retry on dartcom.id_dartcom = dartcom_retry.id_dartcom order by id_dartcom desc')
             result = cursor.fetchall()
             dados:list[DartcomModel] = []
             for d in result:
@@ -910,6 +997,7 @@ class DadoRepository:
                 dado.set_dartcom_satelite(satelite)
 
                 dado.set_date_path(d[15])
+                dado.set_missao(d[16])
                 dados.append(dado)
             cursor.close()
             self.db.commit()
@@ -940,11 +1028,11 @@ class DadoRepository:
     def get_dartcom_templates(self, id_dartcom_antena):
         try:
             cursor = self.db.cursor()
-            cursor.execute('select id_dartcom_satelite, id_dartcom_antena, nome, sensor, data_type, satelite_path, template_name, command, is_compressed, is_epsl0, epsl0_template, template_path_origin_scp from dartcom_satelite where id_dartcom_antena=%s order by id_dartcom_antena', (id_dartcom_antena))
+            cursor.execute('select id_dartcom_satelite, id_dartcom_antena, nome, sensor, data_type, satelite_path, template_name, command, is_compressed, is_epsl0, epsl0_template from dartcom_satelite where id_dartcom_antena=%s order by id_dartcom_antena', (id_dartcom_antena))
             result = cursor.fetchall()
             templates:list[DartcomSateliteModel] = []
             for r in result:                
-                satelite = DartcomSateliteModel(id=r[0], id_dartcom_antena=r[1], nome=r[2], sensor=r[3], data_type=r[4], satelite_path=r[5], template_name=r[6], command=r[7],is_compressed=r[8], is_epsl0=r[9], epsl0_template=r[10], template_path_origin_scp=r[11])
+                satelite = DartcomSateliteModel(id=r[0], id_dartcom_antena=r[1], nome=r[2], sensor=r[3], data_type=r[4], satelite_path=r[5], template_name=r[6], command=r[7],is_compressed=r[8], is_epsl0=r[9], epsl0_template=r[10])
                 templates.append(satelite)
                 cursor.close()
             self.db.commit()
@@ -987,7 +1075,7 @@ class DadoRepository:
     def insert_satelite(self, satelite):
         try:
             cursor = self.db.cursor()
-            cursor.execute('insert into dartcom_satelite(id_dartcom_antena,nome,sensor,data_type,satelite_path,template_name,command,is_compressed,is_epsl0,epsl0_template,template_path_origin_scp) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',(satelite.id_dartcom_antena,satelite.nome,satelite.sensor,satelite.data_type,satelite.satelite_path,satelite.template_name,satelite.command,satelite.is_compressed,satelite.is_epsl0,satelite.epsl0_template,satelite.template_path_origin_scp))
+            cursor.execute('insert into dartcom_satelite(id_dartcom_antena,nome,sensor,data_type,satelite_path,template_name,command,is_compressed,is_epsl0,epsl0_template) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',(satelite.id_dartcom_antena,satelite.nome,satelite.sensor,satelite.data_type,satelite.satelite_path,satelite.template_name,satelite.command,satelite.is_compressed,satelite.is_epsl0,satelite.epsl0_template))
             self.db.commit()            
             cursor.close()
             return None, None
@@ -999,7 +1087,7 @@ class DadoRepository:
     def update_satelite(self, id, satelite):
         try:
             cursor = self.db.cursor()
-            cursor.execute('update dartcom_satelite set id_dartcom_antena=%s, nome=%s, sensor=%s, data_type=%s, satelite_path=%s, template_name=%s, command=%s, is_compressed=%s, is_epsl0=%s, epsl0_template=%s, template_path_origin_scp=%s where id_dartcom_satelite=%s',(satelite.id_dartcom_antena,satelite.nome,satelite.sensor,satelite.data_type,satelite.satelite_path,satelite.template_name,satelite.command,satelite.is_compressed,satelite.is_epsl0,satelite.epsl0_template,satelite.template_path_origin_scp, id))
+            cursor.execute('update dartcom_satelite set id_dartcom_antena=%s, nome=%s, sensor=%s, data_type=%s, satelite_path=%s, template_name=%s, command=%s, is_compressed=%s, is_epsl0=%s, epsl0_template=%s where id_dartcom_satelite=%s',(satelite.id_dartcom_antena,satelite.nome,satelite.sensor,satelite.data_type,satelite.satelite_path,satelite.template_name,satelite.command,satelite.is_compressed,satelite.is_epsl0,satelite.epsl0_template, id))
             self.db.commit()            
             cursor.close()
             return None

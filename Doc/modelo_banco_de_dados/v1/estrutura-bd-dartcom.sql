@@ -113,7 +113,6 @@ CREATE TABLE IF NOT EXISTS dartcom_satelite(
  is_compressed boolean default 0,
  is_epsl0 boolean default 0,
  epsl0_template varchar(100),
- template_path_origin_scp varchar(100),
  CONSTRAINT fk_id_dartcom_antena FOREIGN KEY (id_dartcom_antena) REFERENCES dartcom_antena (id_dartcom_antena)
 );
 

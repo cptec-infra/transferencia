@@ -97,6 +97,12 @@ function goBack() {
 //     }, 15000);
 // }
 
+function reloadPage() {
+    setInterval(function() {    
+        location.reload(true);
+    }, 15000);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     var select = document.getElementById('items_per_page');
 
