@@ -25,13 +25,13 @@ fdt_port = config.get('FDT', 'fdt_port')
 
 last_check_fdt = None
 
-#def background_thread():
-#    with app.app_context():
-#        minutes = 2 * 60
-#        while True:
-#            print('iniciando background')
-#            background_process()
-#            time.sleep(minutes)
+def background_thread():
+   with app.app_context():
+       minutes = 2 * 60
+       while True:
+           print('iniciando background')
+           background_process()
+           time.sleep(minutes)
 
 def background_thread_dartcom():
     with app.app_context():
@@ -41,10 +41,10 @@ def background_thread_dartcom():
             background_process_dartcom()
             time.sleep(minutes)
 
-## Inicie o thread para executar a função em segundo plano
-#thread1 = threading.Thread(target=background_thread)
-#thread1.daemon = True
-#thread1.start()
+# Inicie o thread para executar a função em segundo plano
+thread1 = threading.Thread(target=background_thread)
+thread1.daemon = True
+thread1.start()
 
 thread2 = threading.Thread(target=background_thread_dartcom)
 thread2.daemon = True
