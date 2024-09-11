@@ -1311,29 +1311,29 @@ def define_directory(file1):
         sensor = sat_partes[2]
         ano_mes = sat_partes[4] + '_' + sat_partes[5]
         ultima_parte = sat_partes[-1]
-        pattern = r'(AMAZONIA|CBERS)_(1|4|4A)_[A-Z0-9]+_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_(CB|ETC)\d+$'
+        pattern = r'(AMAZONIA|CBERS)_[A-Z0-9]_[A-Z0-9]+_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_[A-Z0-9]'
 
         if ultima_parte == 'DRP':
             sensor = 'DRP'
-            pattern = r'(AMAZONIA|CBERS)_(1|4|4A)_[A-Z0-9]+_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_(CB|ETC)\d+_DRP$'
+            pattern = r'(AMAZONIA|CBERS)_[A-Z0-9]_[A-Z0-9]+_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_[A-Z0-9]\d+_DRP$'
 
     elif satelite == 'AQUA' or satelite == 'TERRA':
         missao = ''
         sensor = 'MODIS'
         ano_mes = sat_partes[2] + '_' + sat_partes[3]
-        pattern = r'(AQUA|TERRA)_(RAW|CADU|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_(CB|ETC)\d+$'
+        pattern = r'(AQUA|TERRA)_(RAW|CADU|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_[A-Z0-9]'
 
     elif satelite == 'NPP' or satelite == 'NOAA20':
         missao = ''
         sensor = 'VIIRS'
         ano_mes = sat_partes[2] + '_' + sat_partes[3]
-        pattern = r'(NPP|NOAA20)_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_(CB|ETC)\d+$'
+        pattern = r'(NPP|NOAA20)_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_[A-Z0-9]'
 
     elif satelite == 'SPORT':
         missao = ''
         sensor = ''
         ano_mes = sat_partes[2] + '_' + sat_partes[3]
-        pattern = r'SPORT_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_(CB|ETC)\d+$'
+        pattern = r'SPORT_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_[A-Z0-9]'
 
     else:
         pattern = ''
