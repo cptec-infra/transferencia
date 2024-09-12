@@ -1307,17 +1307,17 @@ def copy_dartcom(path_transfer, satelite, missao, date_dir, filename):
 def define_directory(file1):
     sat_partes = file1.split('_')
     satelite = sat_partes[0]
-
     if satelite == 'CBERS' or satelite == 'AMAZONIA':
         missao = sat_partes[1]
         sensor = sat_partes[2]
         ano_mes = sat_partes[4] + '_' + sat_partes[5]
         ultima_parte = sat_partes[-1]
-        pattern = r'(AMAZONIA|CBERS)_[A-Z0-9]_[A-Z0-9]+_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_[A-Z0-9]'
+        pattern = r'(AMAZONIA|CBERS)_[A-Z0-9]+_[A-Z0-9]+_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_[A-Z0-9]'
+        print(pattern)
 
         if ultima_parte == 'DRP':
             sensor = 'DRP'
-            pattern = r'(AMAZONIA|CBERS)_[A-Z0-9]_[A-Z0-9]+_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_[A-Z0-9]\d+_DRP$'
+            pattern = r'(AMAZONIA|CBERS)_[A-Z0-9]+_[A-Z0-9]+_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_[A-Z0-9]\d+_DRP$'
 
     elif satelite == 'AQUA' or satelite == 'TERRA':
         missao = ''
