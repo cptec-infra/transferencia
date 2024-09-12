@@ -118,6 +118,8 @@ def background_process():
         save_md5_cba_zerado(md5_cba)
     for data in new_files_list:
         transfer_file(data)
+        print(f'{get_datetime_str()} - Término transfer_file - {data}')
+    print(f'{get_datetime_str()} - Término background_process na def')
 
 def background_process_dartcom():
     servers = []
@@ -535,7 +537,7 @@ def is_process_running(fdt_origin_data):
     output_ps, _ = ps_process.communicate()
     ps_output_lines = output_ps.decode('utf-8').split('\n')
     filtered_lines = [line for line in ps_output_lines if fdt_origin_data in line]
-    for line in filtered_lines:
+    if filtered_lines:
         return True
     return False
 

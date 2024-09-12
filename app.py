@@ -25,30 +25,35 @@ fdt_port = config.get('FDT', 'fdt_port')
 
 last_check_fdt = None
 
-def background_thread():
-   with app.app_context():
-       minutes = 2 * 60
-       while True:
-           print('iniciando background')
-           background_process()
-           time.sleep(minutes)
-
-def background_thread_dartcom():
+def run_background_process(process_name, process_function, interval_minutes):
     with app.app_context():
-        minutes = 2 * 60
+        interval_seconds = interval_minutes * 60
         while True:
-            print('iniciando background dartcom')
-            background_process_dartcom()
-            time.sleep(minutes)
+            try:
+                print(f'{get_datetime_str()} - Iniciando {process_name}')
+                process_function() 
+                print(f'{get_datetime_str()} - Fim {process_name}')
+            except Exception as e:
+                print(f"{get_datetime_str()} - Erro no processo {process_name}: {e}")
+            time.sleep(interval_seconds)
 
-# Inicie o thread para executar a função em segundo plano
-thread1 = threading.Thread(target=background_thread)
-thread1.daemon = True
-thread1.start()
+# Inicializando os threads para os processos de background
+def start_background_threads():
+    print(f"{get_datetime_str()} - start_background_threads")
 
-thread2 = threading.Thread(target=background_thread_dartcom)
-thread2.daemon = True
-thread2.start()
+    # Cria threads para os dois processos
+    print(f"{get_datetime_str()} - start_background_threads thread1")
+    thread1 = threading.Thread(target=run_background_process, args=("background_process", background_process, 2))
+    thread1.daemon = True 
+    thread1.start()
+
+    print(f"{get_datetime_str()} - start_background_threads thread2")
+    thread2 = threading.Thread(target=run_background_process, args=("background_process_dartcom", background_process_dartcom, 2))
+    thread2.daemon = True
+    thread2.start()
+
+# Chama a função para iniciar os threads em paralelo
+start_background_threads()
 
 @app.route('/', methods=['GET', 'POST'])
 def index():    
@@ -584,7 +589,6 @@ def settings():
 
 @app.route('/check_service_connection')
 def check_service_connection():
-    print('check_service_connection')
     global last_check_fdt
     try:
         is_first_check = False
