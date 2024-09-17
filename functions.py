@@ -118,6 +118,8 @@ def background_process():
         save_md5_cba_zerado(md5_cba)
     for data in new_files_list:
         transfer_file(data)
+        print(f'{get_datetime_str()} - Término transfer_file - {data}')
+    print(f'{get_datetime_str()} - Término background_process na def')
 
 def background_process_dartcom():
     servers = []
@@ -535,7 +537,7 @@ def is_process_running(fdt_origin_data):
     output_ps, _ = ps_process.communicate()
     ps_output_lines = output_ps.decode('utf-8').split('\n')
     filtered_lines = [line for line in ps_output_lines if fdt_origin_data in line]
-    for line in filtered_lines:
+    if filtered_lines:
         return True
     return False
 
@@ -1305,35 +1307,34 @@ def copy_dartcom(path_transfer, satelite, missao, date_dir, filename):
 def define_directory(file1):
     sat_partes = file1.split('_')
     satelite = sat_partes[0]
-
     if satelite == 'CBERS' or satelite == 'AMAZONIA':
         missao = sat_partes[1]
         sensor = sat_partes[2]
         ano_mes = sat_partes[4] + '_' + sat_partes[5]
         ultima_parte = sat_partes[-1]
-        pattern = r'(AMAZONIA|CBERS)_(1|4|4A)_[A-Z0-9]+_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_(CB|ETC)\d+$'
+        pattern = r'(AMAZONIA|CBERS)_[A-Z0-9]+_[A-Z0-9]+_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_[A-Z0-9]+$'
 
         if ultima_parte == 'DRP':
             sensor = 'DRP'
-            pattern = r'(AMAZONIA|CBERS)_(1|4|4A)_[A-Z0-9]+_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_(CB|ETC)\d+_DRP$'
+            pattern = r'(AMAZONIA|CBERS)_[A-Z0-9]+_[A-Z0-9]+_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_[A-Z0-9]\d+_DRP$'
 
     elif satelite == 'AQUA' or satelite == 'TERRA':
         missao = ''
         sensor = 'MODIS'
         ano_mes = sat_partes[2] + '_' + sat_partes[3]
-        pattern = r'(AQUA|TERRA)_(RAW|CADU|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_(CB|ETC)\d+$'
+        pattern = r'(AQUA|TERRA)_(RAW|CADU|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_[A-Z0-9]+$'
 
     elif satelite == 'NPP' or satelite == 'NOAA20':
         missao = ''
         sensor = 'VIIRS'
         ano_mes = sat_partes[2] + '_' + sat_partes[3]
-        pattern = r'(NPP|NOAA20)_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_(CB|ETC)\d+$'
+        pattern = r'(NPP|NOAA20)_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_[A-Z0-9]+$'
 
     elif satelite == 'SPORT':
         missao = ''
         sensor = ''
         ano_mes = sat_partes[2] + '_' + sat_partes[3]
-        pattern = r'SPORT_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_(CB|ETC)\d+$'
+        pattern = r'SPORT_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_[A-Z0-9]+$'
 
     else:
         pattern = ''
@@ -1478,3 +1479,8 @@ def pagination(dados, page, per_page):
         'total_items': total_itens
     }
     return paginated_dados, pages_info
+
+def minutes_to_time(minutes):
+    hours, minutes_int = divmod(minutes, 60) 
+    minutes, seconds = divmod(minutes_int * 60, 60) 
+    return '{:02d}:{:02d}:{:02d}'.format(int(hours), int(minutes), int(seconds))
