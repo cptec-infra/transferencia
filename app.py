@@ -519,10 +519,11 @@ def create_graph_quantity(quantidade_for_date):
 
 def create_graph_satellite(satellite_for_date):
     satelite = [satelites for satelites, quantidade in satellite_for_date]
-    quantidade = [quantidade for satelites, quantidade in satellite_for_date]
+    quantidade = [quantidade['quantidade'] for satelites, quantidade in satellite_for_date]
+    volume = [quantidade['volume'] for satelites, quantidade in satellite_for_date]
 
     # Criar o objeto de gráfico de barras
-    fig = go.Figure(data=[go.Bar(x=quantidade, y=satelite, text=quantidade, textposition='auto', hovertemplate='Quantidade: %{x}<extra></extra>', orientation='h', width=0.3 )])
+    fig = go.Figure(data=[go.Bar(x=quantidade, y=satelite, text=quantidade, textposition='auto', hovertemplate='Quantidade: %{x}<br>Volume: %{customdata:.2f} GB<extra></extra>', customdata=volume, orientation='h', width=0.3 )])
 
     # Atualizar layout do gráfico
     fig.update_layout(
@@ -543,11 +544,13 @@ def create_graph_time(time_for_date_processes, tempo_for_date_armazenamento, tit
     processes = [processes.total_seconds() / 60 for date, processes in time_for_date_processes]
     armazenados = [armazenado.total_seconds() / 60 for date, armazenado in tempo_for_date_armazenamento]
 
+    processes_time = [minutes_to_time(p) for p in processes]
+    armazenados_time = [minutes_to_time(a) for a in armazenados]
 
     # Criar o objeto de gráfico de barras
     fig = go.Figure()
-    fig.add_trace(go.Bar(x=dates, y=processes, name=f'Tempo de {title_processes}', hovertemplate=f'{title_processes}:'+'%{y:.2f} minutos<extra></extra>', marker_color='#1f912e'))
-    fig.add_trace(go.Bar(x=dates, y=armazenados, name='Tempo de Armazenamento', hovertemplate='Armazenamento: %{y:.2f} minutos<extra></extra>', marker_color='#d62728'))
+    fig.add_trace(go.Bar(x=dates, y=processes, name=f'Tempo de {title_processes}', hovertemplate=f'{title_processes}: '+'%{customdata}<extra></extra>', customdata=processes_time, marker_color='#1f912e'))
+    fig.add_trace(go.Bar(x=dates, y=armazenados, name='Tempo de Armazenamento', hovertemplate='Armazenamento: %{customdata}<extra></extra>', customdata=armazenados_time, marker_color='#d62728'))
 
     # Atualizar layout do gráfico
     fig.update_layout(

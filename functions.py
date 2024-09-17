@@ -1313,7 +1313,6 @@ def define_directory(file1):
         ano_mes = sat_partes[4] + '_' + sat_partes[5]
         ultima_parte = sat_partes[-1]
         pattern = r'(AMAZONIA|CBERS)_[A-Z0-9]+_[A-Z0-9]+_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_[A-Z0-9]+$'
-        print(pattern)
 
         if ultima_parte == 'DRP':
             sensor = 'DRP'
@@ -1480,3 +1479,8 @@ def pagination(dados, page, per_page):
         'total_items': total_itens
     }
     return paginated_dados, pages_info
+
+def minutes_to_time(minutes):
+    hours, minutes_int = divmod(minutes, 60) 
+    minutes, seconds = divmod(minutes_int * 60, 60) 
+    return '{:02d}:{:02d}:{:02d}'.format(int(hours), int(minutes), int(seconds))
