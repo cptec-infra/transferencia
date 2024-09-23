@@ -1316,7 +1316,7 @@ def define_directory(file1):
 
         if ultima_parte == 'DRP':
             sensor = 'DRP'
-            pattern = r'(AMAZONIA|CBERS)_[A-Z0-9]+_[A-Z0-9]+_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_[A-Z0-9]\d+_DRP$'
+            pattern = r'(AMAZONIA|CBERS)_[A-Z0-9]+_[A-Z0-9]+_(RAW|DRD)_\d{4}_\d{2}_\d{2}\.\d{2}_\d{2}_\d{2}_[A-Z0-9]+_DRP$'
 
     elif satelite == 'AQUA' or satelite == 'TERRA':
         missao = ''
