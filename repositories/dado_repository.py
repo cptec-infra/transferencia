@@ -67,9 +67,13 @@ class DadoRepository:
                     date_tempo_armazenado[date] = storing_time
 
                 if satellite in date_satellite:
-                    date_satellite[satellite] += 1
+                    date_satellite[satellite]['quantidade'] += 1
+                    date_satellite[satellite]['volume'] += volume         
                 else:
-                    date_satellite[satellite] = 1                
+                    date_satellite[satellite] = {
+                        'quantidade': 1,
+                        'volume': volume
+                    }
 
                 dado = DadoModel()
                 dado.set_id(d[0])
@@ -161,9 +165,13 @@ class DadoRepository:
                     date_tempo_armazenado[date] = storing_time
 
                 if satellite in date_satellite:
-                    date_satellite[satellite] += 1
+                    date_satellite[satellite]['quantidade'] += 1
+                    date_satellite[satellite]['volume'] += volume         
                 else:
-                    date_satellite[satellite] = 1                
+                    date_satellite[satellite] = {
+                        'quantidade': 1,
+                        'volume': volume
+                    }      
 
                 dartcom = DartcomModel()
                 dartcom.set_nome(d[0])
