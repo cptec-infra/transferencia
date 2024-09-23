@@ -506,7 +506,11 @@ def create_graph_quantity(quantidade_for_date):
     fig.update_layout(
         title='Quantidade de arquivos baixados diariamente',
         xaxis=dict(title='Data',tickangle=-30, tickformat='%d/%m', dtick='D1'),
+<<<<<<< HEAD
         yaxis=dict(title='Quantidade', range=[0, max(quantidades) +10]),
+=======
+        yaxis=dict(title='Quantidade', range=[0,max(quantidades) + 10]),
+>>>>>>> 63aaeffa563b38f84a4135fce6023eb87c0964b4
         bargap=0.2,
         colorway=["#1f912e"],
         
