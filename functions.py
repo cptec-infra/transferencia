@@ -82,6 +82,47 @@ def get_transfer_list():
 def get_dartcom_list():
     return dartcom_list
 
+def extract_time(file_name):
+    time_part = file_name.split('_')[6:9]
+    repcote = time_part[0].split('.')[1]
+    concat_all = f"{repcote}:{time_part[1]}:{time_part[2]}"
+    date_str = datetime.strptime(concat_all, '%H:%M:%S')
+    return date_str
+
+def rename_files(files):
+    try:
+        files_by_time = {}
+        result_list = []
+
+        for file in files:
+            time = extract_time(file)
+            if time not in files_by_time:
+                files_by_time[time] = []
+            files_by_time[time].append(file)
+
+        for base_time, files_with_same_time in files_by_time.items():
+            fm01_files = [file for file in files_with_same_time if 'FM01' in file]
+            for fm01_file in fm01_files:
+                new_fm01_time = base_time + timedelta(minutes=10)
+                new_name_fm01 = fm01_file.replace(str(base_time.hour) + '_' + str(base_time.minute).zfill(2),
+                                                f'{new_fm01_time.hour}_{new_fm01_time.minute:02d}')
+                storage_data, pattern, satelity = define_directory(new_name_fm01)
+                os.rename(f"{storage_data}/{fm01_file}", f"{storage_data}/{new_name_fm01}")
+                dado = DadoModel
+                dado_repository = DadoRepository
+                dado.set_rename_file(new_name_fm01)
+                error_db = dado_repository.update_rename(dado=dado)
+                if error_db:
+                    send_email('Falha no registro da tabela rename', f'Favor verificar o ocorrido.\n\n{error_db}', True)
+                    return
+
+
+    except Exception as err:
+        send_email(f'Erro functions.py->rename_files: {err}', True)
+        return f"Erro functions.py->rename_files: {err}"
+
+    return result_list
+
 # procura novos arquivos
 def background_process():
     # atualiza os md5s
@@ -98,7 +139,8 @@ def background_process():
     result_files_md5, list_md5_error = list_md5_search_data()
     # lista de dados que não foram registrados ainda (novos)
     new_files_list = get_new_files_list(result_files_md5)
-
+    
+    
     # add os nomes dos dados (retry) na lista de transferência
     for r in retries:
         transfer_list.append(r.nome)
@@ -107,7 +149,7 @@ def background_process():
     for f in new_files_list:
         transfer_list.append(f)
 
-    # realiza os retries
+    # # realiza os retries
     if retries:
         for retry in retries:
             print(f'Retentando o arquivo {retry.nome}')
@@ -119,6 +161,11 @@ def background_process():
     for data in new_files_list:
         transfer_file(data)
         print(f'{get_datetime_str()} - Término transfer_file - {data}')
+    
+    try:
+        rename_files(new_files_list)
+    except Exception as err:
+        print(f'DEU ERRO NO RENAME: {err}')        
     print(f'{get_datetime_str()} - Término background_process na def')
 
 def background_process_dartcom():

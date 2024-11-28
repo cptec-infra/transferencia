@@ -898,6 +898,18 @@ class DadoRepository:
             print(f'update_storing_completed {e}')       
             return e
         
+
+    def update_rename(self, dado: DadoModel):
+        try:
+            cursor = self.db.cursor()
+            cursor.execute('update dado set rename_file=%s where nome=%s', (dado.rename_file, dado.nome))
+            self.db.commit()
+            cursor.close()
+            return False
+        except Exception as err:
+            print(f'update_storing_completed {err}')       
+            return err
+        
     def save_md5_cba_error(self, nome_dado):
         try:
             cursor = self.db.cursor()
