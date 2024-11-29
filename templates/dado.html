@@ -60,6 +60,12 @@
             <br>Tempo: {{ '-' if not dado.storing_time else dado.storing_time }}
         </div>
     </div>
+    <div class="dado-row">
+        <div class="dado-cell sized">Renomeado</div>
+        <div class="dado-cell">
+            <br>{{ '-' if not dado.rename_file else dado.rename_file }}
+        </div>
+    </div>
     </div>
 </div>
 {% if historico %}
