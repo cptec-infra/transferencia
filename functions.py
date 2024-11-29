@@ -96,26 +96,30 @@ def rename_files(files):
 
         for file in files:
             time = extract_time(file)
+
             if time not in files_by_time:
                 files_by_time[time] = []
             files_by_time[time].append(file)
 
         for base_time, files_with_same_time in files_by_time.items():
-            fm01_files = [file for file in files_with_same_time if 'FM01' and '4A' in file]
+            fm01_files = [file for file in files_with_same_time if 'FM01' in file and '4A' in file]
+
             for fm01_file in fm01_files:
                 new_fm01_time = base_time + timedelta(minutes=10)
                 new_name_fm01 = fm01_file.replace(str(base_time.hour) + '_' + str(base_time.minute).zfill(2),
                                                 f'{new_fm01_time.hour}_{new_fm01_time.minute:02d}')
                 storage_data, pattern, satelity = define_directory(new_name_fm01)
                 os.rename(f"{storage_data}/{fm01_file}", f"{storage_data}/{new_name_fm01}")
-                dado = DadoModel
-                dado_repository = DadoRepository
+                dado = DadoModel()
+                dado_repository = DadoRepository()
+                dado.set_nome(fm01_file)
                 dado.set_rename_file(new_name_fm01)
                 error_db = dado_repository.update_rename(dado=dado)
+
                 if error_db:
+                    print(f"Erro aqui ao fazer update: {error_db} ")
                     send_email('Falha no registro da tabela rename', f'Favor verificar o ocorrido.\n\n{error_db}', True)
                     return
-
 
     except Exception as err:
         send_email(f'Erro functions.py->rename_files: {err}', True)

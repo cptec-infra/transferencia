@@ -314,6 +314,7 @@ class DadoRepository:
                 dado.set_storing_time(storing_time)
                 dado.set_filesize(result[15])
                 dado.set_date_cba(result[16])
+                dado.set_rename_file(result[17])
                 return dado, None
             else:
                 return None, None
@@ -423,6 +424,7 @@ class DadoRepository:
                 dado.set_storing_time(storing_time)
                 dado.set_filesize(d[15])
                 dado.set_date_cba(d[16])
+                dado.set_rename_file(d[17])
                 dados.append(dado)
             cursor.close()
             self.db.commit()
