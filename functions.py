@@ -101,7 +101,7 @@ def rename_files(files):
             files_by_time[time].append(file)
 
         for base_time, files_with_same_time in files_by_time.items():
-            fm01_files = [file for file in files_with_same_time if 'FM01' in file]
+            fm01_files = [file for file in files_with_same_time if 'FM01' and '4A' in file]
             for fm01_file in fm01_files:
                 new_fm01_time = base_time + timedelta(minutes=10)
                 new_name_fm01 = fm01_file.replace(str(base_time.hour) + '_' + str(base_time.minute).zfill(2),
