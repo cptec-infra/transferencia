@@ -702,6 +702,22 @@ class DadoRepository:
             print(e)
             return None, e
 
+    def get_exceptions(self, name):
+        try:
+            cursor = self.db.cursor()
+            cursor.execute('select id_md5_cba_zerado from md5_cba_zerado where nome_dado=%s',(name,))
+            result = cursor.fetchone()
+            self.db.commit()
+            cursor.close()
+            if result:
+                return True, None
+            else:
+                return False, None
+
+        except Exception as e:
+            print(e)
+            return True, e
+
     def insert_dartcom_historico(self, id_dartcom):   
         try:
             cursor = self.db.cursor()
@@ -903,12 +919,18 @@ class DadoRepository:
 
     def update_rename(self, dado: DadoModel):
         try:
+            print('!'*20)
+            print('entrou na funcao de update')
+            print('+'*20)
             cursor = self.db.cursor()
             cursor.execute('update dado set rename_file=%s where nome=%s', (dado.rename_file, dado.nome))
             self.db.commit()
             cursor.close()
+            print('Fez o update')
+            print('-'*20)
             return False
         except Exception as err:
+            print('Deu ruim o update')
             print(f'update_storing_completed {err}')       
             return err
         
