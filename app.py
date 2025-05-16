@@ -25,32 +25,51 @@ fdt_port = config.get('FDT', 'fdt_port')
 
 last_check_fdt = None
 
+# Variáveis globais para controle
+background_threads = []
+stop_event = threading.Event()
+
 def run_background_process(process_name, process_function, interval_minutes):
     with app.app_context():
         interval_seconds = interval_minutes * 60
-        while True:
+        while not stop_event.is_set():
             try:
                 print(f'{get_datetime_str()} - Iniciando {process_name}')
-                process_function() 
+                process_function()
                 print(f'{get_datetime_str()} - Fim {process_name}')
             except Exception as e:
                 print(f"{get_datetime_str()} - Erro no processo {process_name}: {e}")
-            time.sleep(interval_seconds)
+            stop_event.wait(interval_seconds) 
+        print(f'{get_datetime_str()} - {process_name} finalizado')
 
 # Inicializando os threads para os processos de background
 def start_background_threads():
+    global background_threads, stop_event
     print(f"{get_datetime_str()} - start_background_threads")
+
+    stop_event.clear()
+    background_threads = []    
 
     # Cria threads para os dois processos
     print(f"{get_datetime_str()} - start_background_threads thread1")
     thread1 = threading.Thread(target=run_background_process, args=("background_process", background_process, 2))
     thread1.daemon = True 
     thread1.start()
+    background_threads.append(thread1)
 
     print(f"{get_datetime_str()} - start_background_threads thread2")
     thread2 = threading.Thread(target=run_background_process, args=("background_process_dartcom", background_process_dartcom, 2))
     thread2.daemon = True
     thread2.start()
+    background_threads.append(thread2)
+
+def stop_background_threads():
+    global stop_event, background_threads
+    print(f"{get_datetime_str()} - Parando threads de background...")
+    stop_event.set()
+    for t in background_threads:
+        t.join(timeout=5)
+    print(f"{get_datetime_str()} - Threads paradas")
 
 # Chama a função para iniciar os threads em paralelo
 start_background_threads()
@@ -613,6 +632,13 @@ def check_service_connection():
         error_message = str(e)
         send_email('Erro na conexão com o servidor FDT', f'Ocorreu um erro na comunicação com o serviço FDT na CORCR - Cuiabá.\n\nInformativo do erro: {error_message}')
         return jsonify({'status': 'error', 'message': error_message})
+
+# Rota para resetar os processos de background
+@app.route("/reset_background", methods=["POST"])
+def reset_background():
+    stop_background_threads()
+    start_background_threads()
+    return jsonify({"status": "reiniciado com sucesso"})
     
 @app.template_filter('class_status')
 def class_status_filter(s):
