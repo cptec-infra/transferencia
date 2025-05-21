@@ -206,12 +206,12 @@ def dartcom_erro():
                 if error_db_retry:
                     send_email(subject='Falha ao registrar retry', body=f'Favor verificar o ocorrido.\n\n{error_db_retry}', is_adm=True)
         
-        dados, error_db = dado_repository.get_errors()
+        dartcoms, error_db = dado_repository.get_dartcom_errors()
         if error_db:
             send_email(subject='Falha na rota errors', body=f'Favor verificar o ocorrido.\n\n{error_db}', is_adm=True)
-            return render_template('dartcom_errors.html', dados = [], msg = 'Erro no banco de dados')
+            return render_template('dartcom_errors.html', dartcoms = [], msg = 'Erro no banco de dartcoms')
         else:
-            return render_template('dartcom_errors.html', dados = dados)
+            return render_template('dartcom_errors.html', dartcoms = dartcoms)
     else:
         return redirect(url_for('login'))
     

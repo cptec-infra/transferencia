@@ -508,6 +508,27 @@ class DadoRepository:
             print(e)
             return None, e
         
+    def get_dartcom_errors(self):
+        try:
+            cursor = self.db.cursor()
+            cursor.execute('select id_dartcom, nome, compressed_status, storing_status from dartcom where (compressed_status = \'erro\' or storing_status = \'erro\') order by id_dartcom desc')
+            result = cursor.fetchall()
+            dados = []
+            for d in result:
+                
+                dado = DartcomModel()
+                dado.set_id(d[0])
+                dado.set_nome(d[1])
+                dado.set_compressed_status(d[2])
+                dado.set_storing_status(d[3])
+                dados.append(dado)
+            cursor.close()
+            self.db.commit()
+            return dados, None
+        except Exception as e:
+            print(e)
+            return None, e
+        
     def set_retry(self, selected):
         try:
             cursor = self.db.cursor()
