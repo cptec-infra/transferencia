@@ -67,6 +67,14 @@ def stop_background_process():
     global stop_event, background_thread
     print(f"{get_datetime_str()} - Parando background_process...")
     stop_event.set()
+
+    dado_repository = DadoRepository()
+    error_db = dado_repository.delete_dado_executando()
+    
+    if error_db:
+            send_email(subject='Falha ao deletar o dado', body=f'Favor verificar o ocorrido.\n\n{error_db}', is_adm=True)
+            return render_template('index.html', dados=[], msg='Erro no banco de dados')
+
     if background_thread:
         background_thread.join(timeout=5)
     print(f"{get_datetime_str()} - background_process parado")

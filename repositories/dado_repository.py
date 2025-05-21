@@ -1085,7 +1085,7 @@ class DadoRepository:
         except Exception as e:
             print(e)
             return None, e
-        
+
     def insert_antena(self, antena):
         try:
             cursor = self.db.cursor()
@@ -1136,5 +1136,17 @@ class DadoRepository:
             cursor.close()
             return None
         except Exception as e:            
+            print(e)
+            return e
+
+    def delete_dado_executando(self):
+        try:
+            cursor = self.db.cursor()
+            cursor.execute("""DELETE FROM dado WHERE download_status = 'Executando' OR md5_cp_status = 'Executando' OR storing_status = 'Executando'""")
+            self.db.commit()            
+            cursor.close()
+            return None
+
+        except Exception as e:
             print(e)
             return e
