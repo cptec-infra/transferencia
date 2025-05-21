@@ -26,10 +26,12 @@ fdt_port = config.get('FDT', 'fdt_port')
 last_check_fdt = None
 
 # Variáveis globais para controle
-background_threads = []
+background_thread = None
+background_thread_dartcom = None
 stop_event = threading.Event()
+stop_event_dartcom = threading.Event()
 
-def run_background_process(process_name, process_function, interval_minutes):
+def run_background_process(process_name, process_function, interval_minutes, stop_event):
     with app.app_context():
         interval_seconds = interval_minutes * 60
         while not stop_event.is_set():
@@ -39,40 +41,47 @@ def run_background_process(process_name, process_function, interval_minutes):
                 print(f'{get_datetime_str()} - Fim {process_name}')
             except Exception as e:
                 print(f"{get_datetime_str()} - Erro no processo {process_name}: {e}")
-            stop_event.wait(interval_seconds) 
+            stop_event.wait(interval_seconds)
         print(f'{get_datetime_str()} - {process_name} finalizado')
 
 # Inicializando os threads para os processos de background
-def start_background_threads():
-    global background_threads, stop_event
-    print(f"{get_datetime_str()} - start_background_threads")
+def start_background_process():
+    global background_thread, stop_event
+    print(f"{get_datetime_str()} - start_background_process")
 
     stop_event.clear()
-    background_threads = []    
+    background_thread = threading.Thread(target=run_background_process, args=("background_process", background_process, 2, stop_event))
+    background_thread.daemon = True
+    background_thread.start()
 
-    # Cria threads para os dois processos
-    print(f"{get_datetime_str()} - start_background_threads thread1")
-    thread1 = threading.Thread(target=run_background_process, args=("background_process", background_process, 2))
-    thread1.daemon = True 
-    thread1.start()
-    background_threads.append(thread1)
+def start_background_process_dartcom():
+    global background_thread_dartcom, stop_event_dartcom
+    print(f"{get_datetime_str()} - start_background_process_dartcom")
 
-    print(f"{get_datetime_str()} - start_background_threads thread2")
-    thread2 = threading.Thread(target=run_background_process, args=("background_process_dartcom", background_process_dartcom, 2))
-    thread2.daemon = True
-    thread2.start()
-    background_threads.append(thread2)
+    stop_event_dartcom.clear()
+    background_thread_dartcom = threading.Thread(target=run_background_process, args=("background_process_dartcom", background_process_dartcom, 2, stop_event_dartcom))
+    background_thread_dartcom.daemon = True
+    background_thread_dartcom.start()
 
-def stop_background_threads():
-    global stop_event, background_threads
-    print(f"{get_datetime_str()} - Parando threads de background...")
+def stop_background_process():
+    global stop_event, background_thread
+    print(f"{get_datetime_str()} - Parando background_process...")
     stop_event.set()
-    for t in background_threads:
-        t.join(timeout=5)
-    print(f"{get_datetime_str()} - Threads paradas")
+    if background_thread:
+        background_thread.join(timeout=5)
+    print(f"{get_datetime_str()} - background_process parado")
+
+def stop_background_process_dartcom():
+    global stop_event_dartcom, background_thread_dartcom
+    print(f"{get_datetime_str()} - Parando background_process_dartcom...")
+    stop_event_dartcom.set()
+    if background_thread_dartcom:
+        background_thread_dartcom.join(timeout=5)
+    print(f"{get_datetime_str()} - background_process_dartcom parado")
 
 # Chama a função para iniciar os threads em paralelo
-start_background_threads()
+start_background_process()
+start_background_process_dartcom()
 
 @app.route('/', methods=['GET', 'POST'])
 def index():    
@@ -636,8 +645,8 @@ def check_service_connection():
 # Rota para resetar os processos de background
 @app.route("/reset_background", methods=["POST"])
 def reset_background():
-    stop_background_threads()
-    start_background_threads()
+    stop_background_process()
+    start_background_process()
     return jsonify({"status": "reiniciado com sucesso"})
     
 @app.template_filter('class_status')
