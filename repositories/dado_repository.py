@@ -560,7 +560,7 @@ class DadoRepository:
                     error = result[1]
 
                     cursor.execute('insert into dartcom_retry(id_dartcom,nome,error) values(%s,%s,%s)',(id_dartcom, name, error))
-                    cursor.execute('update dado set retry_user=%s, retry_datetime = %s where id_dartcom=%s', (session['id'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), id_dartcom))
+                    cursor.execute('update dartcom set retry_user=%s, retry_datetime = %s where id_dartcom=%s', (session['id'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), id_dartcom))
 
             self.db.commit()
             cursor.close()
