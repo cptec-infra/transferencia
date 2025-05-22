@@ -549,6 +549,26 @@ class DadoRepository:
             print(e)
             return e
         
+    def set_retry_dartcom(self, selected):
+        try:
+            cursor = self.db.cursor()
+            for id_dartcom in selected:
+                cursor.execute('select nome,concat(if(compressed_status = "Erro", "compactar",""), if(storing_status="Erro", "armazenamento","")) as error from dartcom where id_dartcom = %s', (id_dartcom))
+                result = cursor.fetchone()
+                if result:
+                    name = result[0]
+                    error = result[1]
+
+                    cursor.execute('insert into dartcom_retry(id_dartcom,nome,error) values(%s,%s,%s)',(id_dartcom, name, error))
+                    cursor.execute('update dado set retry_user=%s, retry_datetime = %s where id_dartcom=%s', (session['id'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), id_dartcom))
+
+            self.db.commit()
+            cursor.close()
+            return None
+        except Exception as e:
+            print(e)
+            return e
+        
     def set_auto_retry(self, id_dado, id_admin):
         try:
             cursor = self.db.cursor()

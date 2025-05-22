@@ -195,7 +195,7 @@ def background_process_dartcom():
     # lista de dados para retentar
     dartcom_retries = search_dartcom_retries()
 
-    # lista de diretorios dartcom na ampare
+    # lista de diretorios dartcom na ampere
     result_dartcom, dartcom_error = list_search_dartcom(fdt_destiny_dartcom)
 
     if dartcom_error:
