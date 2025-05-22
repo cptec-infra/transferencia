@@ -201,7 +201,7 @@ def dartcom_erro():
         if not is_visitante():
             if request.method == 'POST' and 'selected' in request.form:
                 selected = request.form['selected'].split(',')
-                error_db_retry = dado_repository.set_retry(selected=selected)
+                error_db_retry = dado_repository.set_retry_dartcom(selected=selected)
                 if error_db_retry:
                     send_email(subject='Falha ao registrar retry', body=f'Favor verificar o ocorrido.\n\n{error_db_retry}', is_adm=True)
         
