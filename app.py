@@ -29,7 +29,8 @@ last_check_fdt = None
 background_thread = None
 background_thread_dartcom = None
 stop_event = threading.Event()
-stop_event_dartcom = threading.Event()
+stop_event_dartcom_cba = threading.Event()
+stop_event_dartcom_cp = threading.Event()
 
 def run_background_process(process_name, process_function, interval_minutes, stop_event):
     with app.app_context():
@@ -54,14 +55,25 @@ def start_background_process():
     background_thread.daemon = True
     background_thread.start()
 
-def start_background_process_dartcom():
-    global background_thread_dartcom, stop_event_dartcom
-    print(f"{get_datetime_str()} - start_background_process_dartcom")
+def start_background_process_dartcom_cba():
+    global background_thread_dartcom_cba, stop_event_dartcom_cba
+    print(f"{get_datetime_str()} - inicio_thread_background_process_dartcom_cba")
 
-    stop_event_dartcom.clear()
-    background_thread_dartcom = threading.Thread(target=run_background_process, args=("background_process_dartcom", background_process_dartcom, 2, stop_event_dartcom))
-    background_thread_dartcom.daemon = True
-    background_thread_dartcom.start()
+    stop_event_dartcom_cba.clear()
+    background_thread_dartcom_cba = threading.Thread(target=run_background_process, args=("background_process_dartcom_cba", background_process_dartcom_cba, 1, stop_event_dartcom_cba))
+    background_thread_dartcom_cba.daemon = True
+    background_thread_dartcom_cba.start()
+    print(f"{get_datetime_str()} - fim_thread_background_process_dartcom_cba")
+
+def start_background_process_dartcom_cp():
+    global background_thread_dartcom_cp, stop_event_dartcom_cp
+    print(f"{get_datetime_str()} - inicio_thread_background_process_dartcom_cp")
+
+    stop_event_dartcom_cp.clear()
+    background_thread_dartcom_cp = threading.Thread(target=run_background_process, args=("background_process_dartcom_cp", background_process_dartcom_cp, 1, stop_event_dartcom_cp))
+    background_thread_dartcom_cp.daemon = True
+    background_thread_dartcom_cp.start()    
+    print(f"{get_datetime_str()} - fim_thread_background_process_dartcom_cp")
 
 def stop_background_process():
     global stop_event, background_thread
@@ -79,17 +91,26 @@ def stop_background_process():
         background_thread.join(timeout=5)
     print(f"{get_datetime_str()} - background_process parado")
 
-def stop_background_process_dartcom():
-    global stop_event_dartcom, background_thread_dartcom
-    print(f"{get_datetime_str()} - Parando background_process_dartcom...")
-    stop_event_dartcom.set()
-    if background_thread_dartcom:
-        background_thread_dartcom.join(timeout=5)
-    print(f"{get_datetime_str()} - background_process_dartcom parado")
+def stop_background_process_dartcom_cba():
+    global stop_event_dartcom_cba, background_thread_dartcom_cba
+    print(f"{get_datetime_str()} - Parando background_process_dartcom cba...")
+    stop_event_dartcom_cba.set()
+    if background_thread_dartcom_cba:
+        background_thread_dartcom_cba.join(timeout=5)
+    print(f"{get_datetime_str()} - background_process_dartcom cba parado")
+
+def stop_background_process_dartcom_cp():
+    global stop_event_dartcom_cp, background_thread_dartcom_cp
+    print(f"{get_datetime_str()} - Parando background_process_dartcom cp...")
+    stop_event_dartcom_cp.set()
+    if background_thread_dartcom_cp:
+        background_thread_dartcom_cp.join(timeout=5)
+    print(f"{get_datetime_str()} - background_process_dartcom cp parado")
 
 # Chama a função para iniciar os threads em paralelo
 start_background_process()
-start_background_process_dartcom()
+start_background_process_dartcom_cba()
+start_background_process_dartcom_cp()
 
 @app.route('/', methods=['GET', 'POST'])
 def index():    

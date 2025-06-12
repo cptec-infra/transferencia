@@ -173,15 +173,65 @@ def background_process():
         print(f'DEU ERRO NO RENAME: {err}')        
     print(f'{get_datetime_str()} - Término background_process na def')
 
-def background_process_dartcom():
-    print('{} - Inicia função background_process_dartcom'.format(get_datetime_str()))
+def background_process_dartcom_cba():
+    print('{} - Inicia função background_process_dartcom_CBA'.format(get_datetime_str()))
     print('#'*100)
 
-    servers = []
-    servers.append((fdt_server, fdt_origin_dartcom))
-    servers.append((fdt_server_cp, fdt_origin_dartcom_cp))
+    # servers = []
+    # servers.append((fdt_server, fdt_origin_dartcom))
+    # servers.append((fdt_server_cp, fdt_origin_dartcom_cp))
 
-    service_running = search_files_dartcom(servers)
+    service_running = search_files_dartcom_cba(fdt_server, fdt_origin_dartcom)
+
+    if service_running:
+        print('{} - entrou no service_running e retornou'.format(get_datetime_str()))
+        print('#'*100)
+        return
+
+    global dartcom_list
+    dartcom_list = []
+    result_dartcom = []
+
+    # lista de dados para retentar
+    dartcom_retries = search_dartcom_retries()
+
+    # lista de diretorios dartcom na ampere
+    result_dartcom, dartcom_error = list_search_dartcom(fdt_destiny_dartcom)
+
+    if dartcom_error:
+        send_email('Falha ao buscar dados da antenas', f'Favor verificar o ocorrido.\n\n{dartcom_error}', True)
+        return
+    # lista de dados que não foram registrados ainda (novos)
+    new_files_dartcom = get_new_files_dartcom(result_dartcom)
+
+    # add os nomes dos dados (retry) na lista de transferência
+    for r in dartcom_retries:
+        dartcom_list.append(r.nome)
+
+    # add os nomes dos dados (novos) na lista de transferência
+    for f in new_files_dartcom:
+        dartcom_list.append(f[0])
+
+    # realiza os retries
+    if dartcom_retries:
+        for retry in dartcom_retries:
+            print(f'Retentando o arquivo dartcom {retry.nome}')
+            retry_file_dartcom(retry)
+
+    # realiza os processos para os novos arquivos            
+    # dartcom_file(new_files_dartcom[0])
+    for data in new_files_dartcom:
+        dartcom_file(data)
+
+def background_process_dartcom_cp():
+    print('{} - Inicia função background_process_dartcom_CP'.format(get_datetime_str()))
+    print('#'*100)
+
+    # servers = []
+    # servers.append((fdt_server, fdt_origin_dartcom))
+    # servers.append((fdt_server_cp, fdt_origin_dartcom_cp))
+
+    service_running = search_files_dartcom_cp(fdt_server_cp, fdt_origin_dartcom_cp)
 
     if service_running:
         print('{} - entrou no service_running e retornou'.format(get_datetime_str()))
@@ -523,28 +573,55 @@ def search_files_md5():
         return False
 
 #dados meteorologicos
-def search_files_dartcom(servers):
+def search_files_dartcom_cba(server, origin):
     if is_process_running(fdt_destiny_dartcom):
         print("O processo fdt dartcom já está em execução.")
         return True
     else:
         try:
-            for server, origin in servers:
-                print('{} - início sincronização fdt dartcom - {}'.format(get_datetime_str(), server))
-                fdt_cmd = 'sudo -u transfcba java -jar {} -p {} -P 24 -pull -r -c {} -d {} {}'.format(fdt_service,fdt_port_dartcom,server,fdt_destiny_dartcom_cmd,origin)
-                result = subprocess.run(fdt_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                output = result.stdout.decode()
-                error = result.stderr.decode()
+            # for server, origin in servers:
+            print('{} - início sincronização fdt dartcom CBA - {}'.format(get_datetime_str(), server))
+            fdt_cmd = 'sudo -u transfcba java -jar {} -p {} -P 24 -pull -r -c {} -d {} {}'.format(fdt_service,fdt_port_dartcom,server,fdt_destiny_dartcom_cmd,origin)
+            result = subprocess.run(fdt_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            output = result.stdout.decode()
+            error = result.stderr.decode()
 
-                if result.returncode != 0:
-                    print('Dartcom - Error no comando: {}'.format(error))
-                if output:
-                    print('Dartcom - Output do comando: {}'.format(output))
+            if result.returncode != 0:
+                print('Dartcom - Error no comando: {}'.format(error))
+            if output:
+                print('Dartcom - Output do comando: {}'.format(output))
 
 
         except Exception as e:
             print('erro no fdt: ', e)
-        print('{} - término sincronização fdt dartcom'.format(get_datetime_str()))
+
+        print('{} - término sincronização fdt dartcom CBA'.format(get_datetime_str()))
+
+        return False
+    
+def search_files_dartcom_cp(server, origin):
+    if is_process_running(fdt_destiny_dartcom):
+        print("O processo fdt dartcom já está em execução.")
+        return True
+    else:
+        try:
+            print('{} - início sincronização fdt dartcom CP - {}'.format(get_datetime_str(), server))
+            fdt_cmd = 'sudo -u transfcba java -jar {} -p {} -P 24 -pull -r -c {} -d {} {}'.format(fdt_service,fdt_port_dartcom,server,fdt_destiny_dartcom_cmd,origin)
+            result = subprocess.run(fdt_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            output = result.stdout.decode()
+            error = result.stderr.decode()
+
+            if result.returncode != 0:
+                print('Dartcom - Error no comando: {}'.format(error))
+            if output:
+                print('Dartcom - Output do comando: {}'.format(output))
+
+
+        except Exception as e:
+            print('erro no fdt: ', e)
+
+        print('{} - término sincronização fdt dartcom CP'.format(get_datetime_str()))
+        
         return False
     
 def is_process_running(fdt_origin_data):
