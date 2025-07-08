@@ -1400,13 +1400,18 @@ def copy_file(data, storage_data, satelity):
     data_path = fdt_destiny_all + '/' + data
     satelity_path = fdt_destiny_all + '/' + satelity
     storage = storage_data + '/' + data
+    satelity_path_data = satelity_path + '/' + data
+    
     try:
         os.makedirs(os.path.dirname(storage), exist_ok=True)
         shutil.copy(data_path, storage)
         storing_end_datetime = get_datetime_str()
         storing_status = status_completed
+        
+        # verify if exists file in destiny, remove old and move to satelity folder
+        if os.path.exists(satelity_path_data) and os.path.isfile(satelity_path_data):
+            os.remove(satelity_path_data)
 
-        # move to satelity folder
         shutil.move(data_path, satelity_path)
 
         return storing_status, storing_end_datetime, None
