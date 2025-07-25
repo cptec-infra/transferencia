@@ -1409,7 +1409,7 @@ def copy_file(data, storage_data, satelity):
         storing_status = status_completed
         
         # verify if exists file in destiny, remove old and move to satelity folder
-        if os.path.exists(satelity_path_data) and os.path.isfile(satelity_path_data):
+        if os.path.isfile(satelity_path_data):
             os.remove(satelity_path_data)
 
         shutil.move(data_path, satelity_path)
