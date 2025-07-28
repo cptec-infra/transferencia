@@ -592,6 +592,7 @@ def search_files_dartcom_cba(server, origin):
                 "cb3/E/Aqua",
                 "cb3/E/Terra",
                 "cb3/E/JPSS-1",
+                "cb3/E/NPP",
             ]
 
             origin_today = [f"{origin}/{subdir}/{date_now}" for subdir in subdirs]
