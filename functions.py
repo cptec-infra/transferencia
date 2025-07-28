@@ -579,18 +579,40 @@ def search_files_dartcom_cba(server, origin):
         return True
     else:
         try:
-            # for server, origin in servers:
+            date_now = datetime.now().strftime("%Y-%m-%d")
+            date_prev = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+
+            subdirs = [
+                "cb1/E/HRPT/Archive",
+                "cb1/E/AHRPT/Archive",
+                "cb1/E/EPSL0/Archive",
+                "cb2/E/HRPT/Archive",
+                "cb2/E/AHRPT/Archive",
+                "cb2/E/EPSL0/Archive",
+                "cb3/E/Aqua",
+                "cb3/E/Terra",
+                "cb3/E/JPSS-1",
+            ]
+
+            origin_today = [f"{origin}/{subdir}/{date_now}" for subdir in subdirs]
+            origin_yesterday = [f"{origin}/{subdir}/{date_prev}" for subdir in subdirs]
+            origin_all = origin_today + origin_yesterday            
             print('{} - início sincronização fdt dartcom CBA - {}'.format(get_datetime_str(), server))
-            fdt_cmd = 'sudo -u transfcba java -jar {} -p {} -P 24 -pull -r -c {} -d {} {}'.format(fdt_service,fdt_port_dartcom,server,fdt_destiny_dartcom_cmd,origin)
-            result = subprocess.run(fdt_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            output = result.stdout.decode()
-            error = result.stderr.decode()
 
-            if result.returncode != 0:
-                print('Dartcom - Error no comando: {}'.format(error))
-            if output:
-                print('Dartcom - Output do comando: {}'.format(output))
+            for origin_path in origin_all:
 
+                destiny = origin_path.replace(origin, fdt_destiny_dartcom)
+
+                fdt_cmd = 'sudo -u transfcba java -jar {} -p {} -P 24 -pull -r -c {} -d {} {}'.format(fdt_service,fdt_port_dartcom,server,destiny,origin_path)
+                print(fdt_cmd)
+                result = subprocess.run(fdt_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                output = result.stdout.decode()
+                error = result.stderr.decode()
+
+                if result.returncode != 0:
+                    print('Dartcom - Error no comando: {}'.format(error))
+                if output:
+                    print('Dartcom - Output do comando: {}'.format(output))
 
         except Exception as e:
             print('erro no fdt: ', e)
