@@ -600,8 +600,8 @@ def search_files_dartcom_cba(server, origin):
             print('{} - início sincronização fdt dartcom CBA - {}'.format(get_datetime_str(), server))
 
             for origin_path in origin_all:
-
-                destiny = origin_path.replace(origin, fdt_destiny_dartcom)
+                path_without_date = os.path.dirname(origin_path)
+                destiny = path_without_date.replace(origin, fdt_destiny_dartcom)
 
                 fdt_cmd = 'sudo -u transfcba java -jar {} -p {} -P 24 -pull -r -c {} -d {} {}'.format(fdt_service,fdt_port_dartcom,server,destiny,origin_path)
                 print(fdt_cmd)
