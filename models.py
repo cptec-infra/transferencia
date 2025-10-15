@@ -87,6 +87,7 @@ class DadoModel:
         self.id_dado_retry = None
         self.filesize = None
         self.date_cba = None
+        self.rename_file = None
 
     def get_id(self):
         return self.id
@@ -226,9 +227,15 @@ class DadoModel:
     def set_date_cba(self, value):
         self.date_cba = value
 
-    def __str__(self) -> str:
-        return self.nome
+    def get_rename_file(self):
+        return self.rename_file
     
+    def set_rename_file(self, value):
+        self.rename_file = value
+
+    def __str__(self) -> str:
+        return self.nome        
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -254,7 +261,8 @@ class DadoModel:
             'error': self.error,
             'id_dado_retry': self.id_dado_retry,
             'filesize': self.filesize,
-            'date_cba': self.date_cba
+            'date_cba': self.date_cba,
+            'rename_file': self.rename_file
         }
     
 class DartcomModel:

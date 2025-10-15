@@ -82,6 +82,51 @@ def get_transfer_list():
 def get_dartcom_list():
     return dartcom_list
 
+def extract_time(file_name):
+    time_part = file_name.split('_')[6:9]
+    repcote = time_part[0].split('.')[1]
+    concat_all = f"{repcote}:{time_part[1]}:{time_part[2]}"
+    date_str = datetime.strptime(concat_all, '%H:%M:%S')
+    return date_str
+
+def rename_files(files):
+    try:
+        files_by_time = {}
+        result_list = []
+
+        for file in files:
+            time = extract_time(file)
+
+            if time not in files_by_time:
+                files_by_time[time] = []
+            files_by_time[time].append(file)
+
+        for base_time, files_with_same_time in files_by_time.items():
+            fm01_files = [file for file in files_with_same_time if 'FM01' in file and '4A' in file]
+
+            for fm01_file in fm01_files:
+                new_fm01_time = base_time + timedelta(minutes=10)
+                new_name_fm01 = fm01_file.replace(str(base_time.hour) + '_' + str(base_time.minute).zfill(2),
+                                                f'{new_fm01_time.hour}_{new_fm01_time.minute:02d}')
+                storage_data, pattern, satelity = define_directory(new_name_fm01)
+                os.rename(f"{storage_data}/{fm01_file}", f"{storage_data}/{new_name_fm01}")
+                dado = DadoModel()
+                dado_repository = DadoRepository()
+                dado.set_nome(fm01_file)
+                dado.set_rename_file(new_name_fm01)
+                error_db = dado_repository.update_rename(dado=dado)
+
+                if error_db:
+                    print(f"Erro aqui ao fazer update: {error_db} ")
+                    send_email('Falha no registro da tabela rename', f'Favor verificar o ocorrido.\n\n{error_db}', True)
+                    return
+
+    except Exception as err:
+        send_email(f'Erro functions.py->rename_files: {err}', True)
+        return f"Erro functions.py->rename_files: {err}"
+
+    return result_list
+
 # procura novos arquivos
 def background_process():
     # atualiza os md5s
@@ -98,7 +143,8 @@ def background_process():
     result_files_md5, list_md5_error = list_md5_search_data()
     # lista de dados que não foram registrados ainda (novos)
     new_files_list = get_new_files_list(result_files_md5)
-
+    
+    
     # add os nomes dos dados (retry) na lista de transferência
     for r in retries:
         transfer_list.append(r.nome)
@@ -107,28 +153,39 @@ def background_process():
     for f in new_files_list:
         transfer_list.append(f)
 
-    # realiza os retries
+    # # realiza os retries
     if retries:
         for retry in retries:
             print(f'Retentando o arquivo {retry.nome}')
             retry_file(retry)
 
+
     # realiza a transferencia dos novos arquivos            
     for md5_cba in list_md5_error:
         save_md5_cba_zerado(md5_cba)
+
     for data in new_files_list:
         transfer_file(data)
-        print(f'{get_datetime_str()} - Término transfer_file - {data}')
+    
+    try:
+        rename_files(new_files_list)
+    except Exception as err:
+        print(f'DEU ERRO NO RENAME: {err}')        
     print(f'{get_datetime_str()} - Término background_process na def')
 
-def background_process_dartcom():
-    servers = []
-    servers.append((fdt_server, fdt_origin_dartcom))
-    servers.append((fdt_server_cp, fdt_origin_dartcom_cp))
+def background_process_dartcom_cba():
+    print('{} - Inicia função background_process_dartcom_CBA'.format(get_datetime_str()))
+    print('#'*100)
 
-    service_running = search_files_dartcom(servers)
-    # service_running_cp = search_files_dartcom_cp()
+    # servers = []
+    # servers.append((fdt_server, fdt_origin_dartcom))
+    # servers.append((fdt_server_cp, fdt_origin_dartcom_cp))
+
+    service_running = search_files_dartcom_cba(fdt_server, fdt_origin_dartcom)
+
     if service_running:
+        print('{} - entrou no service_running e retornou'.format(get_datetime_str()))
+        print('#'*100)
         return
 
     global dartcom_list
@@ -137,18 +194,65 @@ def background_process_dartcom():
 
     # lista de dados para retentar
     dartcom_retries = search_dartcom_retries()
-    # lista de diretorios dartcom na ampare
+
+    # lista de diretorios dartcom na ampere
     result_dartcom, dartcom_error = list_search_dartcom(fdt_destiny_dartcom)
-    print('lista de resultados:')
-    print(len(result_dartcom))
 
     if dartcom_error:
         send_email('Falha ao buscar dados da antenas', f'Favor verificar o ocorrido.\n\n{dartcom_error}', True)
         return
     # lista de dados que não foram registrados ainda (novos)
     new_files_dartcom = get_new_files_dartcom(result_dartcom)
-    print('NEWFILES')
-    print(new_files_dartcom)
+
+    # add os nomes dos dados (retry) na lista de transferência
+    for r in dartcom_retries:
+        dartcom_list.append(r.nome)
+
+    # add os nomes dos dados (novos) na lista de transferência
+    for f in new_files_dartcom:
+        dartcom_list.append(f[0])
+
+    # realiza os retries
+    if dartcom_retries:
+        for retry in dartcom_retries:
+            print(f'Retentando o arquivo dartcom {retry.nome}')
+            retry_file_dartcom(retry)
+
+    # realiza os processos para os novos arquivos            
+    # dartcom_file(new_files_dartcom[0])
+    for data in new_files_dartcom:
+        dartcom_file(data)
+
+def background_process_dartcom_cp():
+    print('{} - Inicia função background_process_dartcom_CP'.format(get_datetime_str()))
+    print('#'*100)
+
+    # servers = []
+    # servers.append((fdt_server, fdt_origin_dartcom))
+    # servers.append((fdt_server_cp, fdt_origin_dartcom_cp))
+
+    service_running = search_files_dartcom_cp(fdt_server_cp, fdt_origin_dartcom_cp)
+
+    if service_running:
+        print('{} - entrou no service_running e retornou'.format(get_datetime_str()))
+        print('#'*100)
+        return
+
+    global dartcom_list
+    dartcom_list = []
+    result_dartcom = []
+
+    # lista de dados para retentar
+    dartcom_retries = search_dartcom_retries()
+
+    # lista de diretorios dartcom na ampere
+    result_dartcom, dartcom_error = list_search_dartcom(fdt_destiny_dartcom)
+
+    if dartcom_error:
+        send_email('Falha ao buscar dados da antenas', f'Favor verificar o ocorrido.\n\n{dartcom_error}', True)
+        return
+    # lista de dados que não foram registrados ainda (novos)
+    new_files_dartcom = get_new_files_dartcom(result_dartcom)
 
     # add os nomes dos dados (retry) na lista de transferência
     for r in dartcom_retries:
@@ -469,69 +573,80 @@ def search_files_md5():
         return False
 
 #dados meteorologicos
-def search_files_dartcom(servers):
+def search_files_dartcom_cba(server, origin):
     if is_process_running(fdt_destiny_dartcom):
         print("O processo fdt dartcom já está em execução.")
         return True
     else:
         try:
-            for server, origin in servers:
-                print('{} - início sincronização fdt dartcom - {}'.format(get_datetime_str(), server))
-                fdt_cmd = 'sudo -u transfcba java -jar {} -p {} -P 24 -pull -r -c {} -d {} {}'.format(fdt_service,fdt_port_dartcom,server,fdt_destiny_dartcom_cmd,origin)
+            date_now = datetime.now().strftime("%Y-%m-%d")
+            date_prev = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+
+            subdirs = [
+                "cb1/E/HRPT/Archive",
+                "cb1/E/AHRPT/Archive",
+                "cb1/E/EPSL0/Archive",
+                "cb2/E/HRPT/Archive",
+                "cb2/E/AHRPT/Archive",
+                "cb2/E/EPSL0/Archive",
+                "cb3/E/Aqua",
+                "cb3/E/Terra",
+                "cb3/E/JPSS-1",
+                "cb3/E/NPP",
+            ]
+
+            origin_today = [f"{origin}/{subdir}/{date_now}" for subdir in subdirs]
+            origin_yesterday = [f"{origin}/{subdir}/{date_prev}" for subdir in subdirs]
+            origin_all = origin_today + origin_yesterday            
+            print('{} - início sincronização fdt dartcom CBA - {}'.format(get_datetime_str(), server))
+
+            for origin_path in origin_all:
+                path_without_date = os.path.dirname(origin_path)
+                destiny = path_without_date.replace(origin, fdt_destiny_dartcom)
+
+                fdt_cmd = 'sudo -u transfcba java -jar {} -p {} -P 24 -pull -r -c {} -d {} {}'.format(fdt_service,fdt_port_dartcom,server,destiny,origin_path)
+                print(fdt_cmd)
                 result = subprocess.run(fdt_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 output = result.stdout.decode()
                 error = result.stderr.decode()
 
                 if result.returncode != 0:
-                    print('Error no comando: {}'.format(error))
+                    print('Dartcom - Error no comando: {}'.format(error))
                 if output:
-                    print('Output do comando: {}'.format(output))
+                    print('Dartcom - Output do comando: {}'.format(output))
+
+        except Exception as e:
+            print('erro no fdt: ', e)
+
+        print('{} - término sincronização fdt dartcom CBA'.format(get_datetime_str()))
+
+        return False
+    
+def search_files_dartcom_cp(server, origin):
+    if is_process_running(fdt_destiny_dartcom):
+        print("O processo fdt dartcom já está em execução.")
+        return True
+    else:
+        try:
+            print('{} - início sincronização fdt dartcom CP - {}'.format(get_datetime_str(), server))
+            fdt_cmd = 'sudo -u transfcba java -jar {} -p {} -P 24 -pull -r -c {} -d {} {}'.format(fdt_service,fdt_port_dartcom,server,fdt_destiny_dartcom_cmd,origin)
+            result = subprocess.run(fdt_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            output = result.stdout.decode()
+            error = result.stderr.decode()
+
+            if result.returncode != 0:
+                print('Dartcom - Error no comando: {}'.format(error))
+            if output:
+                print('Dartcom - Output do comando: {}'.format(output))
 
 
         except Exception as e:
             print('erro no fdt: ', e)
-        print('{} - término sincronização fdt dartcom'.format(get_datetime_str()))
+
+        print('{} - término sincronização fdt dartcom CP'.format(get_datetime_str()))
+        
         return False
     
-# def search_files_dartcom_cp():
-#     if is_process_running(scp_ip):
-#         print("O processo scp dartcom já está em execução.")
-#         return True
-#     else:
-#         return False
-#         dado_repository = DadoRepository()
-#         antenas, error_db = dado_repository.get_dartcom_antena()
-#         if error_db:
-#             return
-#         for antena in antenas:
-#             satelites, error_db = dado_repository.get_dartcom_templates(id_dartcom_antena=antena.id)
-#             if error_db:
-#                 return
-            
-#             for satelite in satelites:
-#                 # se satelite possui path scp realiza a transferencia via scp
-#                 if satelite.template_path_origin_scp:
-#                     try:
-#                         date_now = get_date_str()
-#                         # template_path_origin_scp = Template(template=satelite.get_template_path_origin_scp)
-#                         template_path_origin_scp = Template(template=str(satelite.template_path_origin_scp))
-#                         path_origin_scp = template_path_origin_scp.substitute(date=date_now)
-#                         print('{} - início sincronização scp dartcom'.format(get_datetime_str()))
-
-#                         scp_cmd = 'sudo -u transfcba rsync -avz --progress {}@{}:{} {}'.format(scp_user, scp_ip, path_origin_scp, satelite.satelite_path)
-#                         result = subprocess.run(scp_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-#                         output = result.stdout.decode()
-#                         error = result.stderr.decode()
-
-#                         if result.returncode != 0:
-#                             print('Error no comando: {}'.format(error))
-#                         if output:
-#                             print('Output do comando: {}'.format(output))
-#                     except Exception as e:
-#                         print('erro no scp: ', e)
-#                     print('{} - término sincronização scp dartcom'.format(get_datetime_str()))
-#         return False
-
 def is_process_running(fdt_origin_data):
     ps_process = subprocess.Popen(['ps', '-eo', 'args'], stdout=subprocess.PIPE)
     output_ps, _ = ps_process.communicate()
@@ -540,6 +655,44 @@ def is_process_running(fdt_origin_data):
     if filtered_lines:
         return True
     return False
+
+# def list_md5_search_data():
+#     list_files_md5 = []
+#     list_md5_error = []
+
+#     dado_repository = DadoRepository()
+
+#     if os.path.exists(fdt_destiny_md5):
+#         files = os.listdir(fdt_destiny_md5)
+#         for file in files:
+#             # pega o tamanho do md5_cba
+#             md5_size = os.path.getsize(fdt_destiny_md5 + '/' + file)
+
+#             parts = file.split('.')  
+#             if len(parts) >= 2:  
+#                 file_name = '.'.join(parts[:-1])
+
+#                 # verifica na tabela md5_cba_zerado
+#                 result_exceptions, error_db = dado_repository.get_exceptions(file_name)
+
+#                 # caso o md5 esteja zerado
+#                 if md5_size == 0:
+#                     # add para lista de erros
+#                     list_md5_error.append(file_name)
+
+#                 # if not result_exceptions:
+#                 #     # add para lista de arquivos para baixar
+#                 #     list_files_md5.append(file_name)
+#                 list_files_md5.append(file_name)
+
+#                 if error_db:
+#                     # envia email
+#                     send_email(subject='Falha na busca na tabela md5_cba_zerado', body=f'Favor verificar o status do banco de dados.\n\n{error_db}', is_adm=True)
+#                     continue               
+#     else:
+#         print('O diretório não existe')
+
+#     return list_files_md5, list_md5_error
 
 def list_md5_search_data():
     list_files_md5 = []
@@ -564,6 +717,7 @@ def list_md5_search_data():
         print('O diretório não existe')
 
     return list_files_md5, list_md5_error
+
 
 def list_search_dartcom(path):
     list_dartcom = []
@@ -593,11 +747,11 @@ def list_search_dartcom(path):
 
                                 date_now = datetime.now()
                                 date_modified = datetime.fromtimestamp(os.path.getmtime(files_path))
-
                                 diff = date_now - date_modified
                                 missao = ''
                                 error = ''
                                 if diff >= timedelta(minutes=dartcom_time_min):
+
                                     if satelite.command:
                                         missao, error = define_missao(files_path, satelite.command)
                                 
@@ -605,11 +759,6 @@ def list_search_dartcom(path):
                                         dartcom_name = define_dartcom_name(data_dir, satelite, missao)
                                         if dartcom_name:
                                             list_dartcom.append((dartcom_name, missao, files_path, satelite, date_modified, date_dir))
-                                        else:
-                                            print(f"Nome do Dartcom vazio para data_dir: {data_dir}")
-                                    else:
-                                        print('Erro na definição da missão:', error)
-                            
             return list_dartcom, None
     except Exception as e:
         print('Erro:', e)
@@ -864,6 +1013,7 @@ def create_dartcom_pdf(dartcoms, daily_volume, date_start, date_end, volume_fig,
 
 # inicia o processo de transferencia
 def transfer_file(data):
+    print(f'iniciando processo transfer_file para o dado {data}')
     if not data: return
     storage_data, pattern, satelity = define_directory(data)
     if not pattern: return
@@ -871,7 +1021,7 @@ def transfer_file(data):
 
     date_cba = find_data_cba_table(data=data)
     if not date_cba:
-        # o dado ainda não está disponível em CBA
+        print(f'o dado {data} nao esta disponivel em CBA')
         return
 
     dado_repository = DadoRepository()
@@ -1199,6 +1349,7 @@ def download_file(filename):
 
 
         print('Comando FDT: {}'.format(fdt_cmd))
+        print('-'*50)
         result = subprocess.run(fdt_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output = result.stdout.decode()
         error = result.stderr.decode()
@@ -1272,13 +1423,18 @@ def copy_file(data, storage_data, satelity):
     data_path = fdt_destiny_all + '/' + data
     satelity_path = fdt_destiny_all + '/' + satelity
     storage = storage_data + '/' + data
+    satelity_path_data = satelity_path + '/' + data
+    
     try:
         os.makedirs(os.path.dirname(storage), exist_ok=True)
         shutil.copy(data_path, storage)
         storing_end_datetime = get_datetime_str()
         storing_status = status_completed
+        
+        # verify if exists file in destiny, remove old and move to satelity folder
+        if os.path.isfile(satelity_path_data):
+            os.remove(satelity_path_data)
 
-        # move to satelity folder
         shutil.move(data_path, satelity_path)
 
         return storing_status, storing_end_datetime, None

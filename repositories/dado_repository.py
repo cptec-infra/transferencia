@@ -314,6 +314,7 @@ class DadoRepository:
                 dado.set_storing_time(storing_time)
                 dado.set_filesize(result[15])
                 dado.set_date_cba(result[16])
+                dado.set_rename_file(result[17])
                 return dado, None
             else:
                 return None, None
@@ -423,6 +424,7 @@ class DadoRepository:
                 dado.set_storing_time(storing_time)
                 dado.set_filesize(d[15])
                 dado.set_date_cba(d[16])
+                dado.set_rename_file(d[17])
                 dados.append(dado)
             cursor.close()
             self.db.commit()
@@ -506,6 +508,27 @@ class DadoRepository:
             print(e)
             return None, e
         
+    def get_dartcom_errors(self):
+        try:
+            cursor = self.db.cursor()
+            cursor.execute('select id_dartcom, nome, compressed_status, storing_status from dartcom where (compressed_status = \'erro\' or storing_status = \'erro\') order by id_dartcom desc')
+            result = cursor.fetchall()
+            dados = []
+            for d in result:
+                
+                dado = DartcomModel()
+                dado.set_id(d[0])
+                dado.set_nome(d[1])
+                dado.set_compressed_status(d[2])
+                dado.set_storing_status(d[3])
+                dados.append(dado)
+            cursor.close()
+            self.db.commit()
+            return dados, None
+        except Exception as e:
+            print(e)
+            return None, e
+        
     def set_retry(self, selected):
         try:
             cursor = self.db.cursor()
@@ -518,6 +541,26 @@ class DadoRepository:
 
                     cursor.execute('insert into dado_retry(id_dado,nome,error) values(%s,%s,%s)',(id_dado, name, error))
                     cursor.execute('update dado set retry_user=%s, retry_datetime = %s where id_dado=%s', (session['id'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), id_dado))
+
+            self.db.commit()
+            cursor.close()
+            return None
+        except Exception as e:
+            print(e)
+            return e
+        
+    def set_retry_dartcom(self, selected):
+        try:
+            cursor = self.db.cursor()
+            for id_dartcom in selected:
+                cursor.execute('select nome,concat(if(compressed_status = "Erro", "compactar",""), if(storing_status="Erro", "armazenamento","")) as error from dartcom where id_dartcom = %s', (id_dartcom))
+                result = cursor.fetchone()
+                if result:
+                    name = result[0]
+                    error = result[1]
+
+                    cursor.execute('insert into dartcom_retry(id_dartcom,nome,error) values(%s,%s,%s)',(id_dartcom, name, error))
+                    cursor.execute('update dartcom set retry_user=%s, retry_datetime = %s where id_dartcom=%s', (session['id'], datetime.now().strftime('%Y-%m-%d %H:%M:%S'), id_dartcom))
 
             self.db.commit()
             cursor.close()
@@ -699,6 +742,22 @@ class DadoRepository:
         except Exception as e:
             print(e)
             return None, e
+
+    def get_exceptions(self, name):
+        try:
+            cursor = self.db.cursor()
+            cursor.execute('select id_md5_cba_zerado from md5_cba_zerado where nome_dado=%s',(name,))
+            result = cursor.fetchone()
+            self.db.commit()
+            cursor.close()
+            if result:
+                return True, None
+            else:
+                return False, None
+
+        except Exception as e:
+            print(e)
+            return True, e
 
     def insert_dartcom_historico(self, id_dartcom):   
         try:
@@ -898,6 +957,24 @@ class DadoRepository:
             print(f'update_storing_completed {e}')       
             return e
         
+
+    def update_rename(self, dado: DadoModel):
+        try:
+            print('!'*20)
+            print('entrou na funcao de update')
+            print('+'*20)
+            cursor = self.db.cursor()
+            cursor.execute('update dado set rename_file=%s where nome=%s', (dado.rename_file, dado.nome))
+            self.db.commit()
+            cursor.close()
+            print('Fez o update')
+            print('-'*20)
+            return False
+        except Exception as err:
+            print('Deu ruim o update')
+            print(f'update_storing_completed {err}')       
+            return err
+        
     def save_md5_cba_error(self, nome_dado):
         try:
             cursor = self.db.cursor()
@@ -1049,7 +1126,7 @@ class DadoRepository:
         except Exception as e:
             print(e)
             return None, e
-        
+
     def insert_antena(self, antena):
         try:
             cursor = self.db.cursor()
@@ -1100,5 +1177,17 @@ class DadoRepository:
             cursor.close()
             return None
         except Exception as e:            
+            print(e)
+            return e
+
+    def delete_dado_executando(self):
+        try:
+            cursor = self.db.cursor()
+            cursor.execute("""DELETE FROM dado WHERE download_status = 'Executando' OR md5_cp_status = 'Executando' OR storing_status = 'Executando'""")
+            self.db.commit()            
+            cursor.close()
+            return None
+
+        except Exception as e:
             print(e)
             return e

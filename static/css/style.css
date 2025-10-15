@@ -560,6 +560,23 @@ body.dark .switch::before {
     margin-bottom: 10px;
 }
 
+#resetBtn {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    margin: 5px;
+    padding: 6px 12px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: background-color 0.3s;
+}
+
 /* Dash */
 .info-container {
     display: flex;
@@ -917,6 +934,49 @@ input:checked + .slider:before {
 .pagination a:hover {
     background-color: #0056b3;
     color: white;
+}
+
+.popup {
+    display: none;
+    position: fixed;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    padding: 20px 30px;
+    text-align: center;
+    min-width: 280px;
+    font-family: sans-serif;
+}
+
+.popup button {
+    margin-top: 10px;
+    padding: 8px 16px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+.popupOverlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background-color: rgba(0,0,0,0.4);
+    z-index: 999;
+}
+
+.popupMessage {
+    margin-bottom: 15px; 
+    font-size: 16px;
 }
 
 @media only screen and (max-width: 1500px) {

@@ -47,7 +47,7 @@
         </div>
         <div class="cell fixed">
             <div class="status {{ dartcom.storing_status|class_status }}">
-                {{ dartcom.storing_status if dado.storing_status else 'Não executado' }}
+                {{ dartcom.storing_status if dartcom.storing_status else 'Não executado' }}
             </div>
         </div>
     </div>
@@ -74,7 +74,7 @@
         selected.sort();
         formData.append('selected', selected);
 
-        await fetch('/dartcom_erro', {
+        await fetch('/dartcom/erro', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',

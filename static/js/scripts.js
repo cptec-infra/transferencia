@@ -76,26 +76,9 @@ clearSearch.addEventListener("click", () => {
     $(".dados .row.click").show();
 });
 
-// searchButton.addEventListener("click", (event) => {
-//     event.preventDefault();
-//     if (searchBox.style.display === "none" || searchBox.style.display === "") {
-//         searchBox.style.display = "block";
-//     } else {
-//         searchBox.style.display = "none";
-//     }
-// });
-
 function goBack() {
     window.history.back();
 }
-
-// function reloadPage() {
-//     setInterval(function() {    
-//         if(searchBox.style.display != "block"){
-//             location.reload(true);
-//         }
-//     }, 15000);
-// }
 
 function reloadPage() {
     setInterval(function() {    
@@ -132,3 +115,23 @@ document.addEventListener('DOMContentLoaded', function() {
         window.location.href = currentUrl.toString();
     });
 });
+
+function showPopup(message, isError = false) {
+    const popup = document.getElementById("popup");
+    const overlay = document.getElementById("popupOverlay");
+    const messageBox = document.getElementById("popupMessage");
+
+    messageBox.innerText = message;
+    messageBox.style.color = isError ? "#721c24" : "#155724";
+
+    popup.style.border = `1px solid ${isError ? '#f5c6cb' : '#c3e6cb'}`;
+    popup.style.backgroundColor = isError ? "#f8d7da" : "#d4edda";
+
+    popup.style.display = "block";
+    overlay.style.display = "block";
+}
+
+function closePopup() {
+    document.getElementById("popup").style.display = "none";
+    document.getElementById("popupOverlay").style.display = "none";
+}

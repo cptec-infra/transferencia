@@ -8,13 +8,23 @@
 {% endif %}
 <div class="info-container">    
     <div class="info-transfer-list">
-        <div class="dados">
+        <div class="dados" style="position: relative; padding-top: 30px;">
+            <button 
+                id="resetBtn"
+                onclick="resetBackground()" 
+                onmouseover="this.style.backgroundColor='#0056b3'"
+                onmouseout="this.style.backgroundColor='#007bff'"
+            >
+         🔄     <span id="btnText">Reiniciar Fila</span>
+                <span id="btnSpinner" style="display:none;">⏳</span>
+            </button>
+
             <div class="text">Fila</div>
             {% if not transfer_list %}
-            Não há dados na fila
+                Não há dados na fila
             {% endif %}
             {% for file in transfer_list %}
-            <span>{{ file }}</span><br>
+                <span>{{ file }}</span><br>
             {% endfor %}
         </div>
     </div>
@@ -113,6 +123,15 @@
 </div>
 <br>
 <br>
+<div id="popup" class="popup">
+    <div id="popupMessage" class="popupMessage"></div>
+    <button onclick="closePopup()" onmouseover="this.style.backgroundColor='#0056b3'" onmouseout="this.style.backgroundColor='#007bff'">
+        OK
+    </button>
+</div>
+
+<div id="popupOverlay" class="popup-overlay"></div>
+
 {% endblock %}
 
 {% block scripts%}
@@ -128,5 +147,30 @@
 
     // reload page
     reloadPage();
+
+    function resetBackground() {
+        const btn = document.getElementById("resetBtn");
+        const text = document.getElementById("btnText");
+        const spinner = document.getElementById("btnSpinner");
+
+        btn.disabled = true;
+        text.style.display = "none";
+        spinner.style.display = "inline";
+
+        fetch('/reset_background', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                showPopup("Fila reiniciada com sucesso!");
+            })
+            .catch(error => {
+                showPopup("Erro ao reiniciar: " + error, true);
+            })
+            .finally(() => {
+                btn.disabled = false;
+                text.style.display = "inline";
+                spinner.style.display = "none";
+            });
+    }
+
 </script>
 {% endblock %}
