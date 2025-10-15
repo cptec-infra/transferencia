@@ -49,6 +49,7 @@ def run_background_process(process_name, process_function, interval_minutes, sto
 def start_background_process():
     global background_thread, stop_event
     print(f"{get_datetime_str()} - start_background_process")
+    transfer_list.clear()
 
     stop_event.clear()
     background_thread = threading.Thread(target=run_background_process, args=("background_process", background_process, 2, stop_event))
